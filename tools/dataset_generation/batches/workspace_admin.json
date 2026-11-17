@@ -1,0 +1,1645 @@
+{
+ "category": "workspace_admin",
+ "issue_families": [
+  {
+   "family_id": "workspace_admin-f01",
+   "name": "Workspace name and identity",
+   "summary": "Workspace display name, URL name, legal name and distinguishing labels are stale, truncated, wrongly encoded or ambiguous. Symptoms are old names in tabs, footers and emails, broken bookmarks after a URL rename and confusion between similarly named workspaces.",
+   "boundary_note": "Concerns how the organisation identifies itself in the product, not who may access it (perm) or what it pays (billing)."
+  },
+  {
+   "family_id": "workspace_admin-f02",
+   "name": "Logo and branding",
+   "summary": "Logo uploads, logo variants and brand themes do not appear as intended because the SVG sanitiser removes linked resources, files are low resolution, a dark-mode variant is missing or branding toggles for public links are set the wrong way.",
+   "boundary_note": "Organisational branding settings; charts drawing data incorrectly are render and who can open a shared link is perm."
+  },
+  {
+   "family_id": "workspace_admin-f03",
+   "name": "Custom domain display settings",
+   "summary": "A verified custom domain is not used in generated links and emails, the default domain keeps serving the workspace, or a rollout mode limits branded links, because link-domain, redirect or rollout settings are off.",
+   "boundary_note": "DNS and certificates are healthy; when the domain itself fails to resolve or serves a bad certificate, that is connectivity."
+  },
+  {
+   "family_id": "workspace_admin-f04",
+   "name": "Language and locale",
+   "summary": "Interface language, locale variant, language source and enforcement, translations of custom labels, email language and sorting collation follow the wrong setting.",
+   "boundary_note": "Preference settings of the organisation; wrong values or calculations behind the labels would be data_quality."
+  },
+  {
+   "family_id": "workspace_admin-f05",
+   "name": "Number formats",
+   "summary": "Decimal and thousands separators, digit grouping, negative-number style, default precision and compact abbreviations differ from what the organisation expects.",
+   "boundary_note": "Values are correct and only formatted according to settings; rounding inside calculations is data_quality and broken chart drawing is render."
+  },
+  {
+   "family_id": "workspace_admin-f06",
+   "name": "Date formats and week conventions",
+   "summary": "Day/month order, relative versus absolute timestamps, 12/24-hour clock, week start day and period label style follow the wrong workspace default.",
+   "boundary_note": "Display and calendar conventions chosen by the organisation; mis-bucketing by the engine is data_quality and failed report delivery is export."
+  },
+  {
+   "family_id": "workspace_admin-f07",
+   "name": "Time-zone preferences",
+   "summary": "Workspace, dashboard or personal time-zone preferences left at the UTC default, set to fixed offsets or following the device shift relative-date filters, schedules and day boundaries.",
+   "boundary_note": "The engine applies the configured zone correctly; if it ignored a correct setting the issue would be data_quality."
+  },
+  {
+   "family_id": "workspace_admin-f08",
+   "name": "Fiscal year settings",
+   "summary": "Fiscal start month, fiscal year label convention, retail 4-5-4 calendar and 53rd-week placement are not configured to match the organisation's financial calendar.",
+   "boundary_note": "Organisational calendar configuration; comparisons that ignore a correctly configured calendar are data_quality."
+  },
+  {
+   "family_id": "workspace_admin-f09",
+   "name": "Default dashboards and landing pages",
+   "summary": "Workspace, team, new-member and mobile home dashboards and the default date range point to archived content or are overridden by other landing settings.",
+   "boundary_note": "Organisational defaults, not access rights; users who cannot see a dashboard because of their role belong to perm."
+  },
+  {
+   "family_id": "workspace_admin-f10",
+   "name": "Reporting currency settings",
+   "summary": "Reporting currency, secondary display currency, currency display style and per-report currency overrides are set incorrectly, missing, or still recomputing after a change.",
+   "boundary_note": "Conversion maths is correct; wrong rates or double conversion are data_quality, and the currency of the customer's own subscription charges is billing."
+  },
+  {
+   "family_id": "workspace_admin-f11",
+   "name": "System email identity",
+   "summary": "Sender display name, reply-to address, sender domain verification, footer address and email header logo for system emails are not configured.",
+   "boundary_note": "The identity of organisational emails; scheduled report delivery is export and password-reset emails are auth."
+  },
+  {
+   "family_id": "workspace_admin-f12",
+   "name": "Settings inheritance and overrides",
+   "summary": "Personal preferences, workspace templates and locked parent-organisation settings take precedence over or replace workspace defaults, so changes appear not to apply.",
+   "boundary_note": "Precedence among organisational and personal settings, not permission to change them (perm)."
+  },
+  {
+   "family_id": "workspace_admin-f13",
+   "name": "Settings audit and accidental changes",
+   "summary": "Workspace settings changed by mistake, by imports, by copy operations or by the customer's own automation, and how admins trace, restore and get notified about such changes.",
+   "boundary_note": "Administration of organisational settings; metric threshold notifications are alerts and role changes are perm."
+  },
+  {
+   "family_id": "workspace_admin-f14",
+   "name": "Business calendar and trading hours",
+   "summary": "Holiday calendars, weekend definitions, regional calendars, calendar year coverage and store trading hours used by working-day and per-hour metrics are missing or wrong.",
+   "boundary_note": "Organisational calendar settings; when correct calendar settings are mis-applied by calculations, that is data_quality."
+  }
+ ],
+ "related_groups": [
+  {
+   "group_id": "workspace_admin-g01",
+   "family_id": "workspace_admin-f07",
+   "shared_root_cause": "The workspace time zone was never set after onboarding and stayed at the UTC default, so day boundaries and schedules used UTC."
+  },
+  {
+   "group_id": "workspace_admin-g02",
+   "family_id": "workspace_admin-f12",
+   "shared_root_cause": "Personal user preferences, set earlier or copied during a profile migration, silently override newly changed workspace defaults."
+  },
+  {
+   "group_id": "workspace_admin-g03",
+   "family_id": "workspace_admin-f08",
+   "shared_root_cause": "The fiscal year start month was left at January while the customer's fiscal year starts on 1 February."
+  },
+  {
+   "group_id": "workspace_admin-g04",
+   "family_id": "workspace_admin-f02",
+   "shared_root_cause": "The logo sanitiser strips externally linked resources (fonts and images) from uploaded SVG files, so parts of the logo disappear."
+  },
+  {
+   "group_id": "workspace_admin-g05",
+   "family_id": "workspace_admin-f03",
+   "shared_root_cause": "The custom domain was verified but 'Use custom domain in links and emails' was left off, so generated links used the default domain."
+  },
+  {
+   "group_id": "workspace_admin-g06",
+   "family_id": "workspace_admin-f09",
+   "shared_root_cause": "The dashboard configured as a home default was archived, leaving users pointed at missing content."
+  },
+  {
+   "group_id": "workspace_admin-g07",
+   "family_id": "workspace_admin-f12",
+   "shared_root_cause": "The corporate workspace template carried English (US) locale, date and week defaults that are copied into every new workspace."
+  },
+  {
+   "group_id": "workspace_admin-g08",
+   "family_id": "workspace_admin-f14",
+   "shared_root_cause": "The custom holiday calendar only covered the previous year, so the new year had no holidays and too many working days."
+  }
+ ],
+ "tickets": [
+  {
+   "key": "workspace_admin-001",
+   "family_id": "workspace_admin-f01",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Old workspace name still shown after rebrand",
+   "description": "The customer renamed their workspace from 'Granite Retail' to 'Granite Peak Outdoor', but a day later some users still see the old name in the browser tab and the workspace switcher.",
+   "resolution_notes": "The workspace display name was cached in each user's session profile and only refreshed at the next sign-in. As an immediate workaround we triggered a workspace metadata refresh for active sessions; a permanent change to read the name live instead of from the cached profile is scheduled. All users saw the new name after the refresh.",
+   "tags": [
+    "workspace-name",
+    "rebrand",
+    "cached-profile"
+   ],
+   "created_at": "2025-02-03",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-002",
+   "family_id": "workspace_admin-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Bookmarked dashboard links broken after workspace URL change",
+   "description": "After the admin shortened the workspace URL name from 'kestrel-sports' to 'kestrel', staff bookmarks and intranet links return 'page not found'.",
+   "resolution_notes": "Changing the workspace URL name invalidates links that use the old one unless 'Redirect previous URL name' is enabled, and it had been left off. Enabled the redirect, which keeps old links working for 12 months, and advised updating intranet links in the meantime. Old bookmarks now open the same dashboards.",
+   "tags": [
+    "workspace-url",
+    "redirects",
+    "bookmarks"
+   ],
+   "created_at": "2025-07-16",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-003",
+   "family_id": "workspace_admin-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Two workspaces with the same name after acquisition",
+   "description": "Following an acquisition, users belong to two workspaces both called 'Meadowgate', and they keep making changes in the wrong one.",
+   "resolution_notes": "Both workspaces had the same display name and no distinguishing label. Renamed the acquired workspace to 'Meadowgate – Garden Centres', set an 'Acquired' environment badge in a different colour and gave each workspace its own icon. Users confirmed the switcher now clearly tells them apart.",
+   "tags": [
+    "workspace-name",
+    "workspace-switcher",
+    "acquisition"
+   ],
+   "created_at": "2026-03-02",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-004",
+   "family_id": "workspace_admin-f01",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The PDF was generated and delivered correctly; the old name came from the organisation legal-name setting, so this is workspace_admin rather than export.",
+   "category": "workspace_admin",
+   "subject": "Old company name in report footers despite new workspace name",
+   "description": "The customer changed the workspace name months ago after re-registering the company under a new name, but the footer of every PDF report still reads 'Quillbrook Hardware Ltd' instead of the new registered name.",
+   "resolution_notes": "Report footers use the separate 'Organisation legal name' field, not the workspace display name, and only the display name had been updated. Updated the legal name field to the newly registered name. The next scheduled PDF carried the correct footer.",
+   "tags": [
+    "legal-name",
+    "report-footer",
+    "organization-profile"
+   ],
+   "created_at": "2025-10-13",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-005",
+   "family_id": "workspace_admin-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Ampersand in workspace name shows as '&amp;' in invitations",
+   "description": "Invitation emails for the 'Harbor & Pine' workspace read 'You've been invited to Harbor &amp; Pine'.",
+   "resolution_notes": "The invitation template HTML-escaped the workspace name twice, once when saving and again when rendering. Removed the duplicate escaping and tested names containing ampersands, angle brackets and quotes. A fresh invitation shows 'Harbor & Pine' correctly.",
+   "tags": [
+    "workspace-name",
+    "invitation-email",
+    "html-escaping"
+   ],
+   "created_at": "2025-12-10",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-006",
+   "family_id": "workspace_admin-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Workspace name cut off at 40 characters",
+   "description": "The admin can't save the full name 'Brightline Outfitters International Retail Group'; the name field simply stops accepting characters.",
+   "resolution_notes": "The workspace name field was limited to 40 characters. The limit was raised to 80 in workspace settings, and long names are now truncated with a tooltip in the navigation bar. The full name was saved and appears in settings and emails.",
+   "tags": [
+    "workspace-name",
+    "character-limit",
+    "settings"
+   ],
+   "created_at": "2026-08-17",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-007",
+   "family_id": "workspace_admin-f02",
+   "related_group": "workspace_admin-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Uploaded SVG logo appears as an empty box",
+   "description": "The customer's new logo uploads without error, but the header shows an empty rectangle where the logo should be.",
+   "resolution_notes": "The SVG drew its text with an externally linked web font, and the logo sanitiser removes external references for security, leaving nothing visible. The customer re-exported the logo with text converted to outlines. The header now shows the logo in every browser.",
+   "tags": [
+    "logo",
+    "svg",
+    "external-references"
+   ],
+   "created_at": "2025-03-12",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-008",
+   "family_id": "workspace_admin-f02",
+   "related_group": "workspace_admin-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Only the icon part of the logo shows; wordmark missing",
+   "description": "After uploading the brand-kit SVG, only the leaf icon appears in the header and on shared dashboards, without the company wordmark beside it.",
+   "resolution_notes": "The wordmark in that SVG was a linked image pointing at a file on the designer's machine, and linked resources are stripped during upload sanitisation. Exporting the SVG with the wordmark embedded as paths fixed it. The full logo now appears in the header and on shares.",
+   "tags": [
+    "logo",
+    "svg",
+    "brand-kit"
+   ],
+   "created_at": "2026-04-08",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-009",
+   "family_id": "workspace_admin-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Logo looks blurry on high-resolution screens and in PDFs",
+   "description": "Customer says their logo looks fuzzy on newer laptops and noticeably pixelated in PDF report headers.",
+   "resolution_notes": "The uploaded logo was a 120×40 PNG, which gets upscaled on high-density displays and in print-resolution PDFs. Recommended an SVG or a PNG at least three times the display size, and the customer uploaded an SVG. The logo is crisp on screen and in PDFs.",
+   "tags": [
+    "logo",
+    "image-resolution",
+    "branding"
+   ],
+   "created_at": "2025-05-07",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-010",
+   "family_id": "workspace_admin-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Brand colours missing on shared public links",
+   "description": "Internal users see the customer's brand colours, but dashboards opened through public share links use the default theme.",
+   "resolution_notes": "The setting 'Apply workspace branding to public links' was off, which is the default for new workspaces. Enabled it in Branding settings. Public links now show the customer's colours and logo.",
+   "tags": [
+    "branding",
+    "public-links",
+    "theme"
+   ],
+   "created_at": "2025-09-03",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-011",
+   "family_id": "workspace_admin-f02",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Agency wants its logo removed from client-facing share links",
+   "description": "An agency customer shares dashboards with its own clients and wants those pages unbranded, but the agency logo appears at the top of every public link.",
+   "resolution_notes": "This workspace applied branding to public links. Turned off 'Apply workspace branding to public links' and set the share-page header to 'None'. Public links now show no logo or brand colours, while internal views keep the branding.",
+   "tags": [
+    "branding",
+    "public-links",
+    "white-label"
+   ],
+   "created_at": "2026-01-21",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-012",
+   "family_id": "workspace_admin-f02",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Logo invisible in the mobile app's dark mode",
+   "description": "In the mobile app with dark mode on, the header logo disappears; it is fine in light mode and in the web app.",
+   "resolution_notes": "Only a dark-coloured logo had been uploaded, so it vanished against the dark header. Uploaded a light variant to the 'Dark mode logo' slot in Branding settings, which the mobile and web apps use automatically in dark themes. The logo is visible in both modes.",
+   "tags": [
+    "logo",
+    "dark-mode",
+    "mobile-app"
+   ],
+   "created_at": "2026-10-14",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-013",
+   "family_id": "workspace_admin-f03",
+   "related_group": "workspace_admin-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Share links still use app.example.net although our custom domain is live",
+   "description": "The customer's custom domain analytics.brightline.example.com is verified and works, but 'Copy link' still produces app.example.net URLs.",
+   "resolution_notes": "The domain was verified, but 'Use custom domain in links and emails' remained off, so generated links used the default domain. Enabled the setting. New share links use analytics.brightline.example.com.",
+   "tags": [
+    "custom-domain",
+    "share-links",
+    "link-settings"
+   ],
+   "created_at": "2025-04-16",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-014",
+   "family_id": "workspace_admin-f03",
+   "related_group": "workspace_admin-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Invitation emails link to the default domain",
+   "description": "New users invited this week receive emails linking to app.example.net instead of the customer's own analytics address, which their security training tells them to distrust.",
+   "resolution_notes": "The custom domain was active, but link generation still used the default domain because the custom-domain link setting was off. Turned on 'Use custom domain in links and emails' and sent a fresh invitation to confirm. The invitation link uses the custom domain.",
+   "tags": [
+    "custom-domain",
+    "invitations",
+    "email-links"
+   ],
+   "created_at": "2025-04-30",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-015",
+   "family_id": "workspace_admin-f03",
+   "related_group": "workspace_admin-g05",
+   "challenge": null,
+   "classification_rationale": "The emails were delivered correctly; only the link-domain setting was wrong, so this is workspace_admin rather than export.",
+   "category": "workspace_admin",
+   "subject": "Subscription email buttons go to the generic product address",
+   "description": "Customer's admin noticed that the 'Open dashboard' buttons in subscription emails point to the generic product address rather than their branded domain.",
+   "resolution_notes": "Email buttons are built with the workspace's link domain, which was still the default because the custom-domain link setting was off. Enabled it, and the buttons in the next subscription email used the branded domain.",
+   "tags": [
+    "custom-domain",
+    "email-buttons",
+    "link-domain"
+   ],
+   "created_at": "2026-06-24",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-016",
+   "family_id": "workspace_admin-f03",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Default product address still opens our workspace",
+   "description": "The customer moved everyone to their custom domain and wants app.example.net links to stop being used, but old links still open the workspace there.",
+   "resolution_notes": "'Redirect default domain to custom domain' was disabled, so both addresses served the workspace. Enabled the redirect, which sends any default-domain request for this workspace to the custom domain. Old links now land on the branded address.",
+   "tags": [
+    "custom-domain",
+    "redirect",
+    "default-domain"
+   ],
+   "created_at": "2025-11-19",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-017",
+   "family_id": "workspace_admin-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Subsidiary brand needs its own branded address",
+   "description": "The customer added a second custom domain for a subsidiary brand, but every link still uses the parent brand's domain.",
+   "resolution_notes": "A workspace can use only one custom domain for links, so the second domain could not become active alongside the first. Created a separate workspace for the subsidiary, moved its dashboards there and assigned the second domain to it. Links from the subsidiary workspace use its own domain.",
+   "tags": [
+    "custom-domain",
+    "subsidiary",
+    "multi-brand"
+   ],
+   "created_at": "2026-07-01",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-018",
+   "family_id": "workspace_admin-f03",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The domain resolved and served a valid certificate; a display rollout setting limited it, so this is workspace_admin rather than connectivity.",
+   "category": "workspace_admin",
+   "subject": "Custom domain 'not working' for most staff",
+   "description": "The customer says their custom domain is broken because only admins get branded links, while everyone else still gets default-domain links.",
+   "resolution_notes": "DNS and certificate checks were healthy. The custom domain was still in 'Preview for admins' rollout mode, which limits branded links to admins during testing. Switched the rollout to 'All members', and non-admin users now receive branded links.",
+   "tags": [
+    "custom-domain",
+    "rollout-mode",
+    "admin-preview"
+   ],
+   "created_at": "2025-01-14",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-019",
+   "family_id": "workspace_admin-f04",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Staff can't choose their own interface language",
+   "description": "Spanish-speaking store staff can't find a language option in their profile, so the interface is English for everyone.",
+   "resolution_notes": "The workspace had 'Enforce workspace language' enabled, which hides the personal language picker. Changed the language policy to 'Workspace default, users may override'. Staff can now select Spanish while the default remains English.",
+   "tags": [
+    "language",
+    "language-policy",
+    "user-profile"
+   ],
+   "created_at": "2025-08-20",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-020",
+   "family_id": "workspace_admin-f04",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Quebec stores see English despite French workspace language",
+   "description": "The workspace language is French, but staff at Quebec stores see the interface in English on the shared store PCs.",
+   "resolution_notes": "The language source was set to 'Detect from browser', and the store PCs' browsers were set to English. Changed the language source to 'Workspace default' so French applies unless a user explicitly chooses otherwise. Store PCs now show French.",
+   "tags": [
+    "language",
+    "browser-detection",
+    "locale"
+   ],
+   "created_at": "2025-12-17",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-021",
+   "family_id": "workspace_admin-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Custom metric names stay in English for German users",
+   "description": "German users see translated menus, but the customer's own metric and dashboard names remain in English.",
+   "resolution_notes": "Only system labels are translated automatically; custom names use the localisation fields on each metric and dashboard, which were empty. Showed the admin the label translation table, and they added German labels for 34 metrics. German users now see those names in German.",
+   "tags": [
+    "localization",
+    "custom-labels",
+    "metrics"
+   ],
+   "created_at": "2026-05-27",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-022",
+   "family_id": "workspace_admin-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Portuguese interface uses European terms for Brazilian users",
+   "description": "Brazilian users report the interface says 'ecrã' and 'utilizador' instead of 'tela' and 'usuário'.",
+   "resolution_notes": "The workspace language was set to Portuguese (Portugal) instead of Portuguese (Brazil). Changed it to pt-BR. Users now see Brazilian Portuguese terms throughout.",
+   "tags": [
+    "language",
+    "pt-br",
+    "locale-variant"
+   ],
+   "created_at": "2025-06-02",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-023",
+   "family_id": "workspace_admin-f04",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Invitation emails arrive in English for a Spanish workspace",
+   "description": "The workspace interface is in Spanish, but invitation emails sent by the regional admins arrive in English.",
+   "resolution_notes": "The organisation email language was set to 'Sender's language', and the admins sending invitations had English as their personal language. Changed the email language setting to 'Workspace default'. New invitations arrive in Spanish.",
+   "tags": [
+    "language",
+    "invitation-email",
+    "email-language"
+   ],
+   "created_at": "2026-02-25",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-024",
+   "family_id": "workspace_admin-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Store names starting with 'Ä' and 'Ö' sorted after Z",
+   "description": "In dropdowns and tables, German store names such as 'Ägidienplatz' appear after the Z entries instead of with the A's.",
+   "resolution_notes": "Sorting followed the workspace locale, English (US), whose collation placed accented capitals after Z for these lists. Set the workspace locale to German (Germany), which applies German collation rules. Store lists now sort the way German users expect.",
+   "tags": [
+    "locale",
+    "collation",
+    "sorting"
+   ],
+   "created_at": "2025-03-26",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-025",
+   "family_id": "workspace_admin-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "German finance team wants decimal commas",
+   "description": "Finance users in the Hamburg office misread 1,234.56 and asked for numbers to appear as 1.234,56.",
+   "resolution_notes": "The workspace number format was English (US). Set the number format to German (1.234,56) for the workspace. Dashboards and tables now show German separators.",
+   "tags": [
+    "number-format",
+    "decimal-separator",
+    "locale"
+   ],
+   "created_at": "2025-01-22",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-026",
+   "family_id": "workspace_admin-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Percentages display with three decimal places",
+   "description": "Every percentage KPI shows values like 12.345%, which the customer finds noisy on executive dashboards.",
+   "resolution_notes": "A previous admin had set the workspace default precision for percentages to three decimals. Changed it to one decimal; metrics with their own precision override were left unchanged. KPIs now show 12.3%.",
+   "tags": [
+    "number-format",
+    "decimal-places",
+    "percentages"
+   ],
+   "created_at": "2025-07-23",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-027",
+   "family_id": "workspace_admin-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Indian digit grouping and lakh/crore abbreviations",
+   "description": "The customer's Mumbai team wants revenue shown as 12,34,567 and abbreviated in lakh and crore rather than K and M.",
+   "resolution_notes": "The workspace used international digit grouping. Set the number format to English (India) and compact notation to 'Indian (L/Cr)'. Tiles show values like ₹1.2 Cr and tables use 12,34,567 grouping.",
+   "tags": [
+    "number-format",
+    "indian-numbering",
+    "compact-notation"
+   ],
+   "created_at": "2025-10-29",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-028",
+   "family_id": "workspace_admin-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Finance wants negative numbers in parentheses",
+   "description": "The finance team asked for negative variances to appear as (1,234) instead of -1,234 in all tables.",
+   "resolution_notes": "Negative number style is a workspace setting and was at the default minus sign. Switched it to accounting style. Variance tables now show negatives in parentheses.",
+   "tags": [
+    "number-format",
+    "negative-numbers",
+    "accounting-style"
+   ],
+   "created_at": "2026-04-01",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-029",
+   "family_id": "workspace_admin-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Zurich team expects apostrophe thousands separators",
+   "description": "Users in Zurich say amounts like 1,234.50 look foreign to them and want 1'234.50.",
+   "resolution_notes": "The workspace number format was English (UK). Set it to German (Switzerland), which uses an apostrophe for thousands and a point for decimals. Amounts display as 1'234.50.",
+   "tags": [
+    "number-format",
+    "thousands-separator",
+    "swiss-format"
+   ],
+   "created_at": "2026-09-09",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-030",
+   "family_id": "workspace_admin-f05",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The underlying values were exact and only the compact display preference abbreviated them, so this is workspace_admin rather than data_quality.",
+   "category": "workspace_admin",
+   "subject": "Revenue rounded to '1.2M' on KPI tiles",
+   "description": "Finance thinks revenue is being rounded incorrectly because tiles show $1.2M instead of $1,234,567.89.",
+   "resolution_notes": "The workspace default 'Compact numbers on tiles' was on, which abbreviates large values on display; the stored values were exact. Turned compact numbers off for the workspace. Tiles now show full values that match the source.",
+   "tags": [
+    "number-format",
+    "compact-numbers",
+    "kpi-tiles"
+   ],
+   "created_at": "2025-05-21",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-031",
+   "family_id": "workspace_admin-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "UK staff misreading dates as month/day",
+   "description": "UK store managers read 03/04 as 3 April, but the dashboards mean 4 March, which has caused rota mistakes.",
+   "resolution_notes": "The workspace date format was MM/DD/YYYY. Changed it to DD/MM/YYYY. Dates across dashboards and filters now show the day first.",
+   "tags": [
+    "date-format",
+    "uk",
+    "dd-mm-yyyy"
+   ],
+   "created_at": "2025-02-12",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-032",
+   "family_id": "workspace_admin-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Order tables show '3 days ago' instead of dates",
+   "description": "The customer wants exact timestamps in order tables, but they show relative times such as '3 days ago'.",
+   "resolution_notes": "The workspace 'Timestamp display' setting was 'Relative'. Changed it to 'Absolute' so tables show the date and time in the workspace format. Order tables now show exact timestamps.",
+   "tags": [
+    "date-format",
+    "relative-timestamps",
+    "tables"
+   ],
+   "created_at": "2026-06-10",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-033",
+   "family_id": "workspace_admin-f06",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Weekly totals were computed correctly for the configured week; the week-start setting was wrong, so this is workspace_admin rather than data_quality.",
+   "category": "workspace_admin",
+   "subject": "Weekly totals don't match the finance week",
+   "description": "Weekly revenue never matches finance's weekly report, and the customer suspects data is missing.",
+   "resolution_notes": "The workspace week started on Sunday, while finance reports Monday-to-Sunday weeks. Changed 'Week starts on' to Monday. Weekly totals now match finance's report.",
+   "tags": [
+    "week-start",
+    "weekly-totals",
+    "calendar-settings"
+   ],
+   "created_at": "2025-08-06",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-034",
+   "family_id": "workspace_admin-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Hourly chart labels in 12-hour format",
+   "description": "Operations staff in the European stores want 24-hour labels on hourly charts and schedules rather than '2 PM'.",
+   "resolution_notes": "The time format setting was '12-hour'. Set it to '24-hour' for the workspace. Hourly charts and scheduling screens show 14:00-style times.",
+   "tags": [
+    "time-format",
+    "24-hour-clock",
+    "hourly-charts"
+   ],
+   "created_at": "2026-01-07",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-035",
+   "family_id": "workspace_admin-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Period labels don't sort in planning spreadsheets",
+   "description": "Planning wants period labels like '2026-Q1' and '2026-M03' so they sort correctly in their spreadsheets, but dashboards show 'Q1 2026' and 'Mar 2026'.",
+   "resolution_notes": "Period label style is a workspace date setting and was set to 'Descriptive'. Switched it to 'Sortable (ISO-style)'. Charts and tables now label periods as 2026-Q1 and 2026-M03.",
+   "tags": [
+    "date-format",
+    "period-labels",
+    "quarters"
+   ],
+   "created_at": "2026-03-18",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-036",
+   "family_id": "workspace_admin-f06",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": "The PDF was generated and delivered; it followed the workspace default date format, so the fix was a setting rather than an export issue.",
+   "category": "workspace_admin",
+   "subject": "Scheduled PDFs use month-first dates while the app shows day-first",
+   "description": "A UK admin sees day-first dates in the app, but the scheduled PDFs the team receives show month-first dates, such as 03/04/2026 for 4 March.",
+   "resolution_notes": "The admin had a personal DD/MM/YYYY preference, but scheduled PDFs are not tied to a single viewer and use the workspace default, which was MM/DD/YYYY. Changed the workspace default date format to DD/MM/YYYY. The next scheduled PDF used day-first dates.",
+   "tags": [
+    "date-format",
+    "scheduled-pdf",
+    "workspace-default"
+   ],
+   "created_at": "2026-03-09",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-037",
+   "family_id": "workspace_admin-f07",
+   "related_group": "workspace_admin-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "'Yesterday' filter cuts off at 7 pm",
+   "description": "The customer's New York team says the 'Yesterday' filter stops at about 7 pm and pulls in the late evening of the day before instead.",
+   "resolution_notes": "The workspace time zone had never been set after onboarding and defaulted to UTC, so relative date filters used UTC days. Set the workspace time zone to America/New_York. 'Yesterday' now covers midnight to midnight Eastern time.",
+   "tags": [
+    "timezone",
+    "relative-dates",
+    "workspace-default"
+   ],
+   "created_at": "2025-01-09",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-038",
+   "family_id": "workspace_admin-f07",
+   "related_group": "workspace_admin-g01",
+   "challenge": null,
+   "classification_rationale": "Report delivery worked as configured; the wrong hour came from the workspace time-zone preference, so this is workspace_admin rather than export.",
+   "category": "workspace_admin",
+   "subject": "Admins keep scheduling reports at the wrong hour",
+   "description": "Admins pick 8:00 for report schedules, but recipients get the reports at 3:00 or 4:00 in the morning local time.",
+   "resolution_notes": "Schedule times are interpreted in the workspace time zone, which was still the UTC default because it was never set during setup. Set the workspace time zone to America/New_York and adjusted the existing schedules. Reports now arrive at 8:00 local time.",
+   "tags": [
+    "timezone",
+    "schedules",
+    "utc-default"
+   ],
+   "created_at": "2025-06-16",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-039",
+   "family_id": "workspace_admin-f07",
+   "related_group": "workspace_admin-g01",
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "The aggregation was correct for the configured zone; the workspace time-zone preference was wrong, so this is workspace_admin rather than data_quality.",
+   "category": "workspace_admin",
+   "subject": "Daily sales differ from POS by the evening trade",
+   "description": "Every day's sales on the dashboard come in below the POS report by roughly what was sold after 6 or 7 pm, and the following day is higher by the same amount.",
+   "resolution_notes": "The workspace time zone was left at the UTC default, so days were cut at UTC midnight; the aggregation engine behaved correctly for that setting. Set the workspace time zone to America/Chicago, since all of this workspace's stores are in Central time. Daily sales now match the POS reports.",
+   "tags": [
+    "timezone",
+    "daily-totals",
+    "pos-reconciliation"
+   ],
+   "created_at": "2026-11-16",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-040",
+   "family_id": "workspace_admin-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "'Today' shifts when the regional manager travels",
+   "description": "A regional manager says 'Today' figures change unpredictably when travelling between time zones.",
+   "resolution_notes": "The user's profile had 'Follow device time zone' enabled, so relative dates followed the laptop's current zone. Disabled it and set the manager's home zone to Europe/London. 'Today' now stays on London time while travelling.",
+   "tags": [
+    "timezone",
+    "user-preferences",
+    "travel"
+   ],
+   "created_at": "2025-09-24",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-041",
+   "family_id": "workspace_admin-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Regional dashboards need their own local time",
+   "description": "The customer runs stores in Sydney and Los Angeles and wants each regional dashboard to use that region's days, not head office's.",
+   "resolution_notes": "All dashboards inherited the workspace time zone, Europe/London. Set dashboard-level time-zone overrides on the APAC and Americas dashboards (Australia/Sydney and America/Los_Angeles). Each regional dashboard now uses local days while group dashboards keep London time.",
+   "tags": [
+    "timezone",
+    "dashboard-override",
+    "multi-region"
+   ],
+   "created_at": "2026-02-04",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-042",
+   "family_id": "workspace_admin-f07",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "The hour shift came from a fixed-offset time-zone preference rather than from bucketing logic, so this is workspace_admin.",
+   "category": "workspace_admin",
+   "subject": "All times off by one hour since the clocks changed",
+   "description": "Since the March clock change, every time on the customer's dashboards and schedules is an hour behind.",
+   "resolution_notes": "The workspace time zone was set to the fixed offset 'UTC-06:00' rather than America/Chicago, so it never followed daylight saving time. Changed it to America/Chicago. Times are correct and will follow future clock changes.",
+   "tags": [
+    "timezone",
+    "fixed-offset",
+    "daylight-saving"
+   ],
+   "created_at": "2026-03-11",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-043",
+   "family_id": "workspace_admin-f08",
+   "related_group": "workspace_admin-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Dashboards treat Q1 as January to March; ours is February to April",
+   "description": "The customer's fiscal year starts on 1 February, but every quarter on their dashboards follows calendar quarters.",
+   "resolution_notes": "The workspace fiscal year start month was still January. Set it to February. Fiscal quarter filters and tiles now run Feb-Apr, May-Jul, Aug-Oct and Nov-Jan.",
+   "tags": [
+    "fiscal-year",
+    "quarters",
+    "fiscal-start-month"
+   ],
+   "created_at": "2025-02-20",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-044",
+   "family_id": "workspace_admin-f08",
+   "related_group": "workspace_admin-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Fiscal-year total doesn't match the annual report",
+   "description": "The customer's finance team says the fiscal-year total on the Executive Summary differs from their published annual figure, although every individual month matches.",
+   "resolution_notes": "The workspace fiscal year began in January, while the customer's runs February to January, so the total covered the wrong 12 months. Updated the fiscal start month to February. The fiscal-year total now matches the annual report.",
+   "tags": [
+    "fiscal-year",
+    "annual-totals",
+    "executive-summary"
+   ],
+   "created_at": "2025-03-19",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-045",
+   "family_id": "workspace_admin-f08",
+   "related_group": "workspace_admin-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Quarter-to-date tile resets on 1 April instead of 1 May",
+   "description": "Per the customer: 'Our Q2 starts in May, but the QTD tile reset to zero on April 1.'",
+   "resolution_notes": "Fiscal year start month was set to January, so quarter boundaries followed calendar quarters. Set it to February to match the customer's fiscal calendar. The QTD tile now accumulates from 1 May.",
+   "tags": [
+    "fiscal-year",
+    "quarter-to-date",
+    "kpi-tile"
+   ],
+   "created_at": "2026-04-02",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-046",
+   "family_id": "workspace_admin-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Fiscal year label one year behind finance",
+   "description": "Finance calls the year from February 2025 to January 2026 'FY2026', but the dashboards label it FY2025.",
+   "resolution_notes": "The fiscal year label convention was 'Year in which the fiscal year starts'. Switched it to 'Year in which the fiscal year ends'. Filters and labels now show FY2026 for that period.",
+   "tags": [
+    "fiscal-year",
+    "fiscal-labels",
+    "naming-convention"
+   ],
+   "created_at": "2025-04-23",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-047",
+   "family_id": "workspace_admin-f08",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Here the retail calendar setting itself was off, so this is workspace_admin; a correctly enabled calendar that comparisons ignore would be data_quality.",
+   "category": "workspace_admin",
+   "subject": "Monthly comparisons uneven because retail calendar isn't used",
+   "description": "The customer's merchandisers plan by a 4-5-4 retail calendar, but the dashboards use calendar months, so month-over-month comparisons mix partial weeks differently from their plans.",
+   "resolution_notes": "The workspace calendar type was 'Gregorian'. Switched it to 'Retail 4-5-4' with the customer's fiscal start week. Fiscal months now align to retail weeks and match the merchandise plan.",
+   "tags": [
+    "retail-calendar",
+    "4-5-4",
+    "fiscal-months"
+   ],
+   "created_at": "2025-08-27",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-048",
+   "family_id": "workspace_admin-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Where to place the 53rd week this fiscal year",
+   "description": "The customer's retail fiscal year has a 53rd week, and finance wants it counted in January rather than shown as a separate period.",
+   "resolution_notes": "The workspace's 53-week handling was set to 'Show as separate period', so the extra week sat outside the fiscal months. Set 53rd-week placement to 'Add to final fiscal month', which puts it in January. The January period now contains five weeks and matches the finance calendar.",
+   "tags": [
+    "retail-calendar",
+    "53-week-year",
+    "fiscal-settings"
+   ],
+   "created_at": "2026-01-28",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-049",
+   "family_id": "workspace_admin-f09",
+   "related_group": "workspace_admin-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Everyone lands on an empty home page after login",
+   "description": "Since yesterday, users who sign in see a blank home page reading 'No dashboard selected' instead of their usual Sales Overview.",
+   "resolution_notes": "The workspace home dashboard had been archived during a clean-up, leaving no valid default. Set the new 'Sales Overview 2026' dashboard as the workspace home. Users land on it after sign-in.",
+   "tags": [
+    "default-dashboard",
+    "home-page",
+    "archived-dashboard"
+   ],
+   "created_at": "2026-01-12",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-050",
+   "family_id": "workspace_admin-f09",
+   "related_group": "workspace_admin-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "New hires see 'This dashboard is no longer available' on first login",
+   "description": "HR onboarding reports that every new hire's first screen is an error saying the dashboard is no longer available.",
+   "resolution_notes": "The new-member home setting pointed to a dashboard archived last month, so first-time users were sent to missing content. Pointed the new-member default at the current onboarding dashboard and added a warning before archiving any dashboard used as a default. New hires now land on the onboarding dashboard.",
+   "tags": [
+    "default-dashboard",
+    "onboarding",
+    "new-members"
+   ],
+   "created_at": "2026-05-13",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-051",
+   "family_id": "workspace_admin-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Store managers should land on the store dashboard",
+   "description": "The customer wants store managers to open Store Performance after login, while head-office users keep the Executive Summary.",
+   "resolution_notes": "Only a single workspace-wide home dashboard was configured. Set a team-level home dashboard for the 'Store Managers' team, which takes precedence over the workspace default. Store managers now land on Store Performance and everyone else is unchanged.",
+   "tags": [
+    "default-dashboard",
+    "team-defaults",
+    "store-managers"
+   ],
+   "created_at": "2025-05-28",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-052",
+   "family_id": "workspace_admin-f09",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Users don't land on the default dashboard we set",
+   "description": "The admin set a new workspace home dashboard, but most users still open whichever dashboard they viewed last.",
+   "resolution_notes": "The workspace setting 'Open last viewed dashboard' was enabled, and it takes precedence over the home dashboard. Disabled it so everyone lands on the configured home dashboard at sign-in. Users now see the new home dashboard.",
+   "tags": [
+    "default-dashboard",
+    "last-viewed",
+    "landing-page"
+   ],
+   "created_at": "2025-10-01",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-053",
+   "family_id": "workspace_admin-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Dashboards open on 'Last 7 days' instead of month-to-date",
+   "description": "Finance wants every dashboard to open on month-to-date, but they always open on the last 7 days.",
+   "resolution_notes": "The workspace default date range was 'Last 7 days'. Changed it to 'Month to date'; dashboards with their own saved range keep it. Dashboards without a saved range now open on month-to-date.",
+   "tags": [
+    "default-date-range",
+    "dashboard-defaults",
+    "month-to-date"
+   ],
+   "created_at": "2026-08-26",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-054",
+   "family_id": "workspace_admin-f09",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Mobile app opens on a different dashboard than the web app",
+   "description": "After the home dashboard was changed, web users land on the new one but the mobile app still opens on the old dashboard.",
+   "resolution_notes": "The mobile app uses a separate 'Mobile home dashboard' setting, which still pointed to the old dashboard. Updated it to match the web home. The mobile app opens on the new dashboard after a refresh.",
+   "tags": [
+    "default-dashboard",
+    "mobile-app",
+    "home-settings"
+   ],
+   "created_at": "2025-11-05",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-055",
+   "family_id": "workspace_admin-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Conversion was mathematically correct; only the chosen reporting currency was wrong, which is a workspace setting.",
+   "category": "workspace_admin",
+   "subject": "Canadian business wants figures in CAD, not USD",
+   "description": "All of the customer's dashboards show USD, but their Canadian leadership team reports in CAD.",
+   "resolution_notes": "The workspace reporting currency was USD, chosen during onboarding. Changed it to CAD, and the background recompute reconverted history at transaction-date rates. Dashboards now show CAD totals that match the finance team's CAD reports.",
+   "tags": [
+    "reporting-currency",
+    "cad",
+    "workspace-settings"
+   ],
+   "created_at": "2025-03-05",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-056",
+   "family_id": "workspace_admin-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Saved reports still in USD after currency change",
+   "description": "After the workspace reporting currency changed to EUR, dashboards switched but about 20 saved reports still show USD.",
+   "resolution_notes": "Those saved reports had an explicit currency set when they were created, which overrides the workspace default. Bulk-updated them to 'Use workspace currency'. All saved reports now show EUR.",
+   "tags": [
+    "reporting-currency",
+    "saved-reports",
+    "currency-override"
+   ],
+   "created_at": "2025-07-30",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-057",
+   "family_id": "workspace_admin-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Mexican store managers want pesos alongside USD",
+   "description": "The customer's store managers in Mexico want local currency on their dashboards, while head office keeps seeing USD.",
+   "resolution_notes": "Enabled the 'Secondary display currency' workspace option and set MXN as the secondary currency for the Mexico store group. Store managers see MXN with USD in tooltips, and head office still sees USD.",
+   "tags": [
+    "reporting-currency",
+    "secondary-currency",
+    "store-groups"
+   ],
+   "created_at": "2026-07-15",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-058",
+   "family_id": "workspace_admin-f10",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Values were already converted correctly; the ambiguity came from a currency display setting, so this is workspace_admin rather than data_quality.",
+   "category": "workspace_admin",
+   "subject": "Can't tell whether '$' means USD, CAD or AUD",
+   "description": "Dashboards for the customer's three dollar markets all show '$', and executives assume some figures are in the wrong currency.",
+   "resolution_notes": "The currency display style was 'Symbol', which renders USD, CAD and AUD identically. Changed it to 'ISO code' so values are labelled USD, CAD and AUD. Executives confirmed the figures were correct once labelled.",
+   "tags": [
+    "currency-display",
+    "iso-code",
+    "multi-market"
+   ],
+   "created_at": "2025-10-22",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-059",
+   "family_id": "workspace_admin-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Amounts labelled 'XXX' in a newly provisioned workspace",
+   "description": "A workspace the customer created through the provisioning API shows every amount with the code 'XXX'.",
+   "resolution_notes": "The workspace was created without a reporting currency, so it fell back to the ISO placeholder code XXX. Set the reporting currency to GBP and asked the customer to add it to their provisioning request template. Amounts now display in GBP.",
+   "tags": [
+    "reporting-currency",
+    "workspace-provisioning",
+    "placeholder-code"
+   ],
+   "created_at": "2026-10-01",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-060",
+   "family_id": "workspace_admin-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Mixed currencies an hour after switching reporting currency",
+   "description": "The customer switched reporting currency from GBP to EUR, and an hour later some dashboards show EUR while others still show GBP.",
+   "resolution_notes": "A reporting currency change triggers a background recompute of cached aggregates, which can take up to two hours in large workspaces, and dashboards switch as their caches are rebuilt. Confirmed the recompute was progressing and prioritised the remaining dashboards. All dashboards showed EUR 40 minutes later, and the settings page now shows recompute progress.",
+   "tags": [
+    "reporting-currency",
+    "recompute",
+    "cache"
+   ],
+   "created_at": "2025-12-18",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-061",
+   "family_id": "workspace_admin-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "System emails sent as 'Analytics Notifications'",
+   "description": "Staff ignore the product's system emails because the sender shows a generic product name instead of the customer's company.",
+   "resolution_notes": "The sender display name had never been customised. Set the workspace sender name to 'Saffron Street Insights'. New notification and invitation emails show that sender name.",
+   "tags": [
+    "email-sender",
+    "display-name",
+    "notifications"
+   ],
+   "created_at": "2025-02-27",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-062",
+   "family_id": "workspace_admin-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Replies to invitation emails bounce from no-reply",
+   "description": "New users reply to invitation emails with questions, and their replies bounce back from the no-reply address.",
+   "resolution_notes": "No reply-to address was configured for the workspace. Set it to the customer's helpdesk, helpdesk@quillfeather.example.com, once the verification email was confirmed. Replies now reach the helpdesk.",
+   "tags": [
+    "email-sender",
+    "reply-to",
+    "invitations"
+   ],
+   "created_at": "2025-09-17",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-063",
+   "family_id": "workspace_admin-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Old office address in system email footers",
+   "description": "The footer of the product's system emails still shows the customer's previous head office address.",
+   "resolution_notes": "Email footers use the organisation profile address, which was never updated after the move. Updated the address in the Organisation profile. Footers show the new address.",
+   "tags": [
+    "organization-profile",
+    "email-footer",
+    "address"
+   ],
+   "created_at": "2026-04-15",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-064",
+   "family_id": "workspace_admin-f11",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "There was no network or reachability fault; the email identity setting was waiting for domain verification, so this is workspace_admin.",
+   "category": "workspace_admin",
+   "subject": "Emails still come from the product domain after setting our sender",
+   "description": "The admin configured notifications@orchidlane.example.com as the sender address, but emails still arrive from the product's own address.",
+   "resolution_notes": "The custom sender domain was in 'Pending verification' because the DKIM record shown in settings had not been published. The customer published the record, verification completed and the sender switched. A test notification arrived from the customer's address and passed DKIM.",
+   "tags": [
+    "sender-domain",
+    "dkim",
+    "email-identity"
+   ],
+   "created_at": "2026-06-17",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-065",
+   "family_id": "workspace_admin-f11",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Notification emails show the old logo after rebranding",
+   "description": "The app header shows the new logo, but invitation and notification emails still carry the old one.",
+   "resolution_notes": "Emails use a separate 'Email header logo' field in Branding settings, which still held the old image. Uploaded the new logo to that field. New emails show the current logo.",
+   "tags": [
+    "branding",
+    "email-logo",
+    "rebrand"
+   ],
+   "created_at": "2025-12-03",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-066",
+   "family_id": "workspace_admin-f12",
+   "related_group": "workspace_admin-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Some users still see English after switching the workspace to French",
+   "description": "The admin set the workspace language to French, but about a dozen users still get the English interface.",
+   "resolution_notes": "Those users had set their personal language to English at some point, and personal preferences take precedence over the workspace default. Showed the admin the 'Members with overrides' report and, after checking with the users, reset their language to 'Workspace default'. All of them now see French.",
+   "tags": [
+    "user-overrides",
+    "language",
+    "workspace-defaults"
+   ],
+   "created_at": "2025-04-02",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-067",
+   "family_id": "workspace_admin-f12",
+   "related_group": "workspace_admin-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Number format change ignored for part of the finance team",
+   "description": "After the workspace switched to German number format, three finance analysts still see 1,234.56.",
+   "resolution_notes": "The analysts had personal number-format preferences left over from an earlier trial, which override the workspace setting. Reset their number format to 'Workspace default'. They now see 1.234,56.",
+   "tags": [
+    "user-overrides",
+    "number-format",
+    "finance-team"
+   ],
+   "created_at": "2025-11-26",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-068",
+   "family_id": "workspace_admin-f12",
+   "related_group": "workspace_admin-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Date format update reaches new users but not long-standing ones",
+   "description": "New users see the new DD/MM/YYYY format, but users who joined before last year still see MM/DD/YYYY.",
+   "resolution_notes": "Users created before the profile redesign had been given an explicit personal date format copied from the old default, and that copy now overrides the workspace setting. Cleared the copied personal value so those users inherit the workspace default. All users show DD/MM/YYYY.",
+   "tags": [
+    "user-overrides",
+    "date-format",
+    "legacy-profiles"
+   ],
+   "created_at": "2026-05-20",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-069",
+   "family_id": "workspace_admin-f12",
+   "related_group": "workspace_admin-g02",
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Values were converted correctly; a personal display-currency preference overrode the workspace default, so this is workspace_admin rather than data_quality.",
+   "category": "workspace_admin",
+   "subject": "One director sees revenue in the wrong currency",
+   "description": "A sales director reports dashboard revenue in GBP while everyone else sees EUR, and suspects the conversion is broken.",
+   "resolution_notes": "The director had a personal display currency of GBP, which overrides the workspace reporting currency. Reset it to 'Workspace currency' at the director's request. The director now sees EUR, matching colleagues.",
+   "tags": [
+    "user-overrides",
+    "display-currency",
+    "reporting-currency"
+   ],
+   "created_at": "2026-08-05",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-070",
+   "family_id": "workspace_admin-f12",
+   "related_group": "workspace_admin-g07",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "New Singapore workspace uses US dates and a Sunday week start",
+   "description": "The workspace set up last week for the Singapore team shows MM/DD dates and weeks starting on Sunday, unlike the team's previous workspace.",
+   "resolution_notes": "It was created from the corporate workspace template, which carries English (US) date and week settings into every new workspace. Set this workspace to English (Singapore) with a Monday week start; the customer chose to leave the template unchanged for now. The team confirmed dates and weeks look as expected.",
+   "tags": [
+    "workspace-template",
+    "week-start",
+    "date-format"
+   ],
+   "created_at": "2025-06-24",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-071",
+   "family_id": "workspace_admin-f12",
+   "related_group": "workspace_admin-g07",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Five new European workspaces created in English (US) format",
+   "description": "The customer created five European regional workspaces from their template, and all of them came up with US dates, US number format and English.",
+   "resolution_notes": "The template copies its settings into each new workspace and still held English (US) locale defaults. Updated each regional workspace's locale and corrected the template so future workspaces start with region-appropriate defaults. The five workspaces now use their local formats.",
+   "tags": [
+    "workspace-template",
+    "settings-inheritance",
+    "locale"
+   ],
+   "created_at": "2025-08-13",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-072",
+   "family_id": "workspace_admin-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Subsidiary workspace's currency reverts to EUR on save",
+   "description": "The UK subsidiary admin changes reporting currency to GBP and saves, but after a reload the setting shows EUR again.",
+   "resolution_notes": "Child workspaces inherit reporting currency from the parent organisation, where the setting was locked, so the child's change was discarded. The parent organisation admin unlocked currency for child workspaces and the subsidiary admin set GBP. The setting now persists after reload.",
+   "tags": [
+    "settings-inheritance",
+    "locked-settings",
+    "subsidiary"
+   ],
+   "created_at": "2026-02-18",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-073",
+   "family_id": "workspace_admin-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Who changed our workspace time zone?",
+   "description": "Every dashboard shifted to Pacific time this morning, and the admin wants to know who changed the setting and when.",
+   "resolution_notes": "The settings audit log showed a workspace admin on the US team switched the time zone from America/New_York to America/Los_Angeles at 08:12 UTC while testing. Restored America/New_York, and the customer agreed to do future testing in their sandbox workspace. Dashboards returned to Eastern time.",
+   "tags": [
+    "settings-audit",
+    "timezone",
+    "accidental-change"
+   ],
+   "created_at": "2025-05-15",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-074",
+   "family_id": "workspace_admin-f13",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Every quarter tile changed overnight",
+   "description": "This morning each quarter-based tile shows different numbers from yesterday, and Q3 now starts in a different month.",
+   "resolution_notes": "Settings history showed the fiscal year start month was changed from February to March the previous evening, apparently by mistake while an admin explored settings. Restored February from settings history. Quarter tiles match yesterday's values again.",
+   "tags": [
+    "settings-history",
+    "fiscal-year",
+    "accidental-change"
+   ],
+   "created_at": "2025-09-11",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-075",
+   "family_id": "workspace_admin-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Settings import blanked our branding",
+   "description": "After an admin imported a settings file to standardise locale across workspaces, the logo and brand colours disappeared from the main workspace.",
+   "resolution_notes": "The exported settings file contained empty branding fields, and the import treated empty values as 'clear' rather than 'leave unchanged'. Restored branding from settings history, and the import now skips empty fields unless clearing is explicitly requested. Logo and colours are back.",
+   "tags": [
+    "settings-import",
+    "branding",
+    "settings-history"
+   ],
+   "created_at": "2026-03-25",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-076",
+   "family_id": "workspace_admin-f13",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Workspace number format reverts every night",
+   "description": "The admin changes the number format each afternoon, and by the next morning it is back to the old value.",
+   "resolution_notes": "The customer's own automation script calls the admin API nightly and re-applies a stored configuration that still contained the old number format. The customer updated the stored configuration in their script. The setting has stayed on the new value for a week.",
+   "tags": [
+    "settings-automation",
+    "admin-api",
+    "configuration-drift"
+   ],
+   "created_at": "2025-12-11",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-077",
+   "family_id": "workspace_admin-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Sandbox settings copied into production",
+   "description": "The production workspace suddenly uses the experimental locale and default dashboard from the customer's sandbox.",
+   "resolution_notes": "An admin used 'Copy settings' intending to copy production into the sandbox but selected the opposite direction. Restored production's settings from history as of the previous day, and the copy dialog now names source and target and asks for confirmation. Production locale and default dashboard are back.",
+   "tags": [
+    "copy-settings",
+    "sandbox",
+    "settings-history"
+   ],
+   "created_at": "2026-07-22",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-078",
+   "family_id": "workspace_admin-f13",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "This is about notifying owners of workspace setting changes, not metric threshold alerts, so it belongs in workspace_admin rather than alerts.",
+   "category": "workspace_admin",
+   "subject": "Want an alert when someone changes workspace settings",
+   "description": "After an accidental change, the customer wants owners told whenever a workspace-level setting is modified.",
+   "resolution_notes": "Settings-change notifications are an organisation option and were off. Enabled 'Notify owners of settings changes' and added the IT group mailbox as a recipient. A test change produced a notification within a minute.",
+   "tags": [
+    "settings-audit",
+    "admin-notifications",
+    "change-tracking"
+   ],
+   "created_at": "2026-10-08",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-079",
+   "family_id": "workspace_admin-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Business-day metrics using US holidays for UK stores",
+   "description": "The UK workspace's 'Sales per trading day' counts the August bank holiday as a trading day and treats US Thanksgiving as a holiday.",
+   "resolution_notes": "The workspace holiday calendar was set to United States. Switched it to United Kingdom (England and Wales). Trading-day counts and per-day metrics now follow UK bank holidays.",
+   "tags": [
+    "holiday-calendar",
+    "trading-days",
+    "uk"
+   ],
+   "created_at": "2025-09-01",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-080",
+   "family_id": "workspace_admin-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Stores in one region need a Friday-Saturday weekend",
+   "description": "The customer's stores in one region observe a Friday-Saturday weekend, but working-day metrics treat Saturday and Sunday as the weekend.",
+   "resolution_notes": "Weekend days are defined per business calendar, and the region used the default Saturday-Sunday calendar. Created a calendar with a Friday-Saturday weekend and assigned it to that store group. Working-day counts for those stores now exclude Fridays and Saturdays.",
+   "tags": [
+    "business-calendar",
+    "weekend-days",
+    "store-groups"
+   ],
+   "created_at": "2026-01-14",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-081",
+   "family_id": "workspace_admin-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Regional holidays not reflected for Bavarian stores",
+   "description": "Stores in Bavaria close on regional public holidays, but working-day metrics count those days as normal trading days.",
+   "resolution_notes": "The workspace used the national calendar for Germany, which omits state-level holidays. Assigned the Bavaria regional calendar to the Bavarian store group. Working-day metrics for those stores now exclude the regional holidays.",
+   "tags": [
+    "holiday-calendar",
+    "regional-holidays",
+    "store-groups"
+   ],
+   "created_at": "2025-06-12",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-082",
+   "family_id": "workspace_admin-f14",
+   "related_group": "workspace_admin-g08",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "'Working days left this month' counts New Year's Day",
+   "description": "In the first days of January the customer noticed the 'Working days left' tile counts 1 January and the other public holidays.",
+   "resolution_notes": "The customer's custom holiday calendar had been imported for 2025 only, so 2026 had no holidays. As a workaround we entered January's holidays manually so pacing was right immediately; the customer imported their full 2026 calendar the following week as the permanent fix. The tile now excludes 2026 holidays.",
+   "tags": [
+    "holiday-calendar",
+    "calendar-coverage",
+    "pacing"
+   ],
+   "created_at": "2026-01-05",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-083",
+   "family_id": "workspace_admin-f14",
+   "related_group": "workspace_admin-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "Days-to-target pacing too optimistic since the new year",
+   "description": "Store target pacing has looked too rosy since January because it assumes more working days than the stores actually have.",
+   "resolution_notes": "The custom business calendar only listed holidays up to December 2025, so the new year had no holidays and more working days than reality. Imported the 2026 holiday list and set a reminder in calendar settings to load the next year's dates each November. Pacing now uses the correct working-day count.",
+   "tags": [
+    "business-calendar",
+    "target-pacing",
+    "year-end"
+   ],
+   "created_at": "2026-01-19",
+   "status": "resolved"
+  },
+  {
+   "key": "workspace_admin-084",
+   "family_id": "workspace_admin-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "workspace_admin",
+   "subject": "'Sales per open hour' assumes 9-to-5 for every store",
+   "description": "The customer's stores trade from 8 am to 10 pm, but 'Sales per open hour' divides by eight hours per day.",
+   "resolution_notes": "Store trading hours had never been configured, so the business calendar's default of 09:00-17:00 applied. Entered trading hours for each store group in the business calendar. Sales per open hour now divides by 14 hours on standard days.",
+   "tags": [
+    "trading-hours",
+    "business-calendar",
+    "per-hour-metrics"
+   ],
+   "created_at": "2025-11-13",
+   "status": "resolved"
+  }
+ ]
+}

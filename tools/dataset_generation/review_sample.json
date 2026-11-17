@@ -1,0 +1,2001 @@
+{
+ "seed": 4242,
+ "sample": {
+  "alerts": [
+   {
+    "ticket_id": "T-2086",
+    "category": "alerts",
+    "subject": "Alert emails quarantined by customer's mail gateway",
+    "description": "Customer's IT team reports our alert emails started landing in quarantine on Monday with the reason 'sender authentication failed'. Other emails from us are fine.",
+    "resolution_notes": "Alert emails had moved to a new sending subdomain, alerts.example.com, which was missing DKIM signing on our side, so strict receiving policies rejected them. Enabled and published DKIM for the subdomain. The customer's gateway accepted the next test alert with authentication passing, and no exemption was needed on their side.",
+    "tags": [
+     "dkim",
+     "email-quarantine",
+     "sender-authentication"
+    ],
+    "created_at": "2025-05-22",
+    "family": "alerts-f07",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "These are alert notification emails; password-reset or sign-in emails would be auth."
+   },
+   {
+    "ticket_id": "T-2235",
+    "category": "alerts",
+    "subject": "Old region's alerts doubled after setting up the new region",
+    "description": "Customer created the dashboard for their new West region by copying the East region dashboard, choosing to include its alerts, and then editing the dashboard filters. Now East managers get every East alert twice, and West has no alerts at all.",
+    "resolution_notes": "The cloned rules kept their own East region scope and East recipients, because editing a dashboard's filters does not change the scope of rules attached to it, so East alerts were duplicated and nothing watched West. Re-scoped the copied rules to the West region and West recipients instead of deleting them. East managers now get one alert each, and a West test breach alerted the West managers.",
+    "tags": [
+     "cloned-rules",
+     "region-setup",
+     "rule-scope"
+    ],
+    "created_at": "2025-03-31",
+    "family": "alerts-f05",
+    "related_group": "alerts-g03",
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2283",
+    "category": "alerts",
+    "subject": "Duplicate tickets created by alert webhook to our automation",
+    "description": "Customer's automation platform receives our alert webhooks and opens a work ticket for each. Many alerts now produce two or three tickets, and our alert log shows timeouts for those deliveries.",
+    "resolution_notes": "Their automation ran the whole ticket creation before responding, taking over 10 seconds, so our alert channel timed out after 8 seconds and retried. Advised them to acknowledge immediately and create the ticket asynchronously, and to use the alert's dedup key to ignore repeats. After the change no timeouts or duplicate tickets were seen over a week.",
+    "tags": [
+     "alert-webhook",
+     "receiver-timeout",
+     "duplicate-tickets"
+    ],
+    "created_at": "2026-06-11",
+    "family": "alerts-f09",
+    "related_group": null,
+    "challenge": "related_symptom_different_product",
+    "classification_rationale": "These are alert notifications sent through an alert webhook channel; slow receivers of product event webhooks would be api."
+   },
+   {
+    "ticket_id": "T-2412",
+    "category": "alerts",
+    "subject": "False 'revenue dropped to zero' alerts at the top of every hour",
+    "description": "Customer receives a 'store revenue is 0 this hour' alert for many stores at roughly :00 most hours. When they look at the dashboard a few minutes later, revenue for that hour is normal.",
+    "resolution_notes": "The rule evaluated at :00, but the customer's point-of-sale batch for the previous hour lands between :05 and :10, so the hour was empty at evaluation time. Added a 15-minute evaluation delay to the rule. Over the next two days there were no zero-revenue alerts while normal hourly data was present.",
+    "tags": [
+     "evaluation-delay",
+     "partial-data",
+     "false-positive"
+    ],
+    "created_at": "2025-02-20",
+    "family": "alerts-f03",
+    "related_group": "alerts-g01",
+    "challenge": null,
+    "classification_rationale": "Data arrived on its usual schedule, so this is not sync; the rule evaluated before the data landed."
+   },
+   {
+    "ticket_id": "T-2569",
+    "category": "alerts",
+    "subject": "Store managers get two emails per alert, area managers get one",
+    "description": "Agent summary: for the same rule, store managers receive duplicate emails while area managers receive one. The rule notifies both the 'Store Managers' group and several individual managers.",
+    "resolution_notes": "Several store managers were listed both individually and through the group, and recipients were not de-duplicated by address. Removed the individual entries and deployed a change that de-duplicates recipients across groups and individuals at send time. Each manager now receives one email per alert.",
+    "tags": [
+     "recipient-overlap",
+     "duplicate-notifications",
+     "email-channel"
+    ],
+    "created_at": "2025-12-11",
+    "family": "alerts-f05",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2571",
+    "category": "alerts",
+    "subject": "Value in alert message much lower than the dashboard",
+    "description": "Customer says the numbers quoted in their hourly sales alerts are often 30-60% lower than what the dashboard shows for the same hour later in the day.",
+    "resolution_notes": "The rule evaluated at the top of the hour, before the point-of-sale batch for that hour had finished loading, so the alert captured a partial total. Added a 15-minute evaluation delay aligned with the batch arrival. Alert values now match the dashboard for the same hour.",
+    "tags": [
+     "evaluation-delay",
+     "partial-data",
+     "alert-message"
+    ],
+    "created_at": "2025-04-02",
+    "family": "alerts-f03",
+    "related_group": "alerts-g01",
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "The final values on the dashboard were correct; the alert message showed an intermediate value because it evaluated early, so this is alerts rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2805",
+    "category": "alerts",
+    "subject": "Every alert email now arrives twice",
+    "description": "Since Thursday, the customer's regional team receives two identical emails for every sales alert, a few seconds apart.",
+    "resolution_notes": "On Thursday the team cloned their regional dashboard to make a draft version, and cloning also copied the alert rules attached to its widgets, so each rule now existed twice. Deleted the cloned rules after confirming they were unchanged copies, and dashboard cloning now asks whether to copy alert rules (default: no). The next alerts arrived once each.",
+    "tags": [
+     "duplicate-notifications",
+     "dashboard-clone",
+     "cloned-rules"
+    ],
+    "created_at": "2025-01-23",
+    "family": "alerts-f05",
+    "related_group": "alerts-g03",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2817",
+    "category": "alerts",
+    "subject": "Average basket alert never fires",
+    "description": "Customer set up an alert for average basket value dropping below 35 across all stores. Their dashboard showed it at 31 on several days, but no alert was sent.",
+    "resolution_notes": "The rule's aggregation was set to 'sum' across stores, so it compared the total of all stores' averages (in the thousands) with 35. Changed the aggregation to a transaction-weighted average to match the dashboard tile. Replaying the past month, the rule fired on the same three days the dashboard showed below 35.",
+    "tags": [
+     "aggregation-type",
+     "average-basket",
+     "missed-alert"
+    ],
+    "created_at": "2025-04-24",
+    "family": "alerts-f02",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2886",
+    "category": "alerts",
+    "subject": "Chat channel gets each stock alert two times",
+    "description": "The store operations channel in the customer's chat tool shows every low-stock alert posted twice by our app.",
+    "resolution_notes": "The alert rules list showed two identical rules for each product family, one attached to the original stock dashboard and one to a copy an analyst created last week; copying a dashboard duplicated its attached rules. Removed the copies and pointed the analyst to the new clone option that leaves rules behind. Single posts confirmed on the next three alerts.",
+    "tags": [
+     "duplicate-notifications",
+     "chat-channel",
+     "cloned-rules"
+    ],
+    "created_at": "2025-02-06",
+    "family": "alerts-f05",
+    "related_group": "alerts-g03",
+    "challenge": null,
+    "classification_rationale": null
+   }
+  ],
+  "api": [
+   {
+    "ticket_id": "T-2026",
+    "category": "api",
+    "subject": "Only processing one change per webhook since enabling batching",
+    "description": "Since the customer turned on webhook batching to reduce request volume, their consumer seems to lose most inventory changes during busy periods.",
+    "resolution_notes": "With batching on, each delivery carries an events array, but the consumer only read the first element. Updated the consumer to iterate the full array and acknowledge the batch only after all items are stored. Change counts in their system now match the delivery log.",
+    "tags": [
+     "webhook-batching",
+     "events-array",
+     "inventory-changes"
+    ],
+    "created_at": "2026-03-31",
+    "family": "api-f10",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2106",
+    "category": "api",
+    "subject": "Deploy pipeline creating duplicate chart annotations",
+    "description": "Customer's release pipeline posts an annotation for each deployment. Some charts now show two or three identical 'Release' markers for the same deploy.",
+    "resolution_notes": "The pipeline's HTTP step had a 5-second timeout and retried the POST without an Idempotency-Key, so slow but successful requests were repeated. Added an Idempotency-Key derived from the deployment ID and raised the client timeout. The next ten deployments each created exactly one annotation; we also removed the duplicates.",
+    "tags": [
+     "idempotency-key",
+     "client-retries",
+     "annotations"
+    ],
+    "created_at": "2025-02-04",
+    "family": "api-f09",
+    "related_group": "api-g08",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2189",
+    "category": "api",
+    "subject": "Webhooks rejected as 'timestamp outside tolerance'",
+    "description": "Customer's receiver logs 'signature timestamp outside tolerance' for every event since Monday, even though signatures are computed correctly.",
+    "resolution_notes": "The receiving host's clock had drifted about seven minutes after its time-sync service stopped, so our timestamps looked older than the 5-minute replay tolerance. The customer restored time synchronisation on the host. Verification passed again for new events, and we suggested monitoring clock drift on webhook receivers.",
+    "tags": [
+     "webhook-signature",
+     "clock-drift",
+     "replay-tolerance"
+    ],
+    "created_at": "2026-01-14",
+    "family": "api-f02",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Signature timestamps are rejected because of the receiver's clock, not a network or certificate issue, so this stays api."
+   },
+   {
+    "ticket_id": "T-2242",
+    "category": "api",
+    "subject": "Order IDs off by a few digits in our web app",
+    "description": "Customer's front-end developer reports that order IDs displayed in their internal web app differ from ours in the last two or three digits, for newer orders only.",
+    "resolution_notes": "Order IDs are 64-bit integers returned as JSON numbers, and the app's JavaScript parser rounded values above 2^53. Advised using the id_str field that every object also returns, or a big-integer-aware parser. After switching to id_str the displayed IDs matched exactly.",
+    "tags": [
+     "integer-precision",
+     "id-str",
+     "javascript-client"
+    ],
+    "created_at": "2025-05-15",
+    "family": "api-f12",
+    "related_group": "api-g07",
+    "challenge": null,
+    "classification_rationale": "The IDs are correct in our system and in the raw response; they are corrupted by the client's number parsing, so this is api rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2282",
+    "category": "api",
+    "subject": "Every webhook event arriving twice",
+    "description": "Customer's consumer receives each event twice, consistently, with different delivery IDs but identical event IDs.",
+    "resolution_notes": "Two subscriptions pointed at the same URL: an old one created during a pilot and a newer one from the production setup. Removed the pilot subscription after confirming it covered no extra event types. Each event now arrives once.",
+    "tags": [
+     "webhook-subscription",
+     "duplicate-subscription",
+     "event-id"
+    ],
+    "created_at": "2026-04-22",
+    "family": "api-f11",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2325",
+    "category": "api",
+    "subject": "Custom webhook receiver never validates any signature",
+    "description": "A customer building their first webhook receiver says none of the signatures match, including on the test event sent from settings.",
+    "resolution_notes": "Their code computed the HMAC over the parsed 'data' object only, while signatures cover the timestamp, a period, and the full raw body, as documented. Shared the reference verification snippet and walked through the signed-content format. Their receiver validated the test event and subsequent live events.",
+    "tags": [
+     "webhook-signature",
+     "signed-content",
+     "integration-setup"
+    ],
+    "created_at": "2026-06-16",
+    "family": "api-f02",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2552",
+    "category": "api",
+    "subject": "Scheduled report created three times via API",
+    "description": "Customer's onboarding script set up a weekly report for a new region, and now three identical copies of the schedule exist, so managers receive the report three times.",
+    "resolution_notes": "The script's retry wrapper repeated the create-schedule POST after client-side timeouts, and without an Idempotency-Key each retry created a new schedule. Removed the two extra schedules and updated the wrapper to send a stable Idempotency-Key per logical request. A re-run of the script against a test region created one schedule.",
+    "tags": [
+     "idempotency-key",
+     "duplicate-objects",
+     "retry-wrapper"
+    ],
+    "created_at": "2025-08-26",
+    "family": "api-f09",
+    "related_group": "api-g08",
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "The duplicates were created through the public API by the customer's retries, so this is api rather than an export or sync problem."
+   },
+   {
+    "ticket_id": "T-2841",
+    "category": "api",
+    "subject": "Duplicate store targets after network blip",
+    "description": "During a brief network outage at the customer's office, their planning tool uploaded store targets and now several stores show doubled targets on the attainment dashboard.",
+    "resolution_notes": "The planning tool retried each create-target request that had timed out on its side, without an Idempotency-Key, so targets that had already been created were created again. Deleted the duplicates via the API and enabled the tool's idempotency setting, which sends a stable key per target. A simulated timeout test produced no further duplicates.",
+    "tags": [
+     "idempotency-key",
+     "network-timeout",
+     "sales-targets"
+    ],
+    "created_at": "2026-05-05",
+    "family": "api-f09",
+    "related_group": "api-g08",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2869",
+    "category": "api",
+    "subject": "Orders missing when paging through the orders API",
+    "description": "Customer's reconciliation script pages through GET /v2/orders with offset and limit during the trading day and finds a handful of orders missing every run.",
+    "resolution_notes": "Offset pagination over a collection that changes while it is being read shifts rows between pages, so some orders slid into pages the script had already passed. Switched the script to cursor pagination ordered by a stable key, with an updated_since checkpoint for incremental runs. Three consecutive runs reconciled exactly.",
+    "tags": [
+     "pagination",
+     "offset-pagination",
+     "cursor-pagination"
+    ],
+    "created_at": "2025-02-18",
+    "family": "api-f04",
+    "related_group": "api-g03",
+    "challenge": null,
+    "classification_rationale": null
+   }
+  ],
+  "auth": [
+   {
+    "ticket_id": "T-2201",
+    "category": "auth",
+    "subject": "Forced password change keeps coming back",
+    "description": "When the 90-day expiry prompt appears, the user changes their password successfully, signs in, and is immediately told the password has expired again.",
+    "resolution_notes": "For accounts with a pending email-change verification, the password change saved the new hash but skipped updating the 'last changed' date, so the expiry check kept firing. Fixed the update so the date is always recorded and corrected it for the five affected accounts. The user signed in without another expiry prompt.",
+    "tags": [
+     "password-expiry",
+     "forced-change",
+     "password-policy"
+    ],
+    "created_at": "2025-10-28",
+    "family": "auth-f15",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2254",
+    "category": "auth",
+    "subject": "Password reset link reports 'already used' on first click",
+    "description": "Customer reports that password reset links open to 'This link has already been used' even when clicked within a minute of the email arriving. Several colleagues at the same company see the same message.",
+    "resolution_notes": "The customer's inbound email security gateway opens every link in incoming mail to scan it, which redeemed the single-use reset token before the user clicked. As a workaround the user entered the six-digit reset code from the same email, which a link scanner cannot consume; a permanent change so that opening the link no longer redeems the token is tracked for a later release. Confirmed the user signed in with the new password.",
+    "tags": [
+     "password-reset",
+     "reset-token",
+     "email-scanner"
+    ],
+    "created_at": "2025-02-11",
+    "family": "auth-f01",
+    "related_group": "auth-g01",
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2261",
+    "category": "auth",
+    "subject": "Signature validation fails during first SSO setup",
+    "description": "A customer configuring SSO for the first time gets 'Signature validation failed' on every test sign-in, even though the certificate was copied from the identity provider minutes earlier.",
+    "resolution_notes": "The admin had uploaded the IdP's encryption certificate rather than its signing certificate, so signatures could never verify. Pointed them to the signing certificate in the IdP metadata and they replaced it on the SSO settings page. Test sign-ins succeeded and SSO was switched on for the workspace.",
+    "tags": [
+     "sso",
+     "saml",
+     "certificate-mixup"
+    ],
+    "created_at": "2026-04-14",
+    "family": "auth-f04",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2640",
+    "category": "auth",
+    "subject": "Reset emails deferred 40+ minutes for one customer domain",
+    "description": "Customer's admin reports that reset emails to anyone at their company arrive 40 to 70 minutes after the request. Messages to other domains arrive normally.",
+    "resolution_notes": "A DKIM key rotation on our transactional mail domain left the published DNS record with a truncated key, so the customer's strict mail server treated our messages as failing sender authentication and deferred them. Corrected the DKIM record and released the queued messages. A test reset email to the customer's domain arrived in under a minute with DKIM passing.",
+    "tags": [
+     "password-reset",
+     "email-delivery",
+     "dkim"
+    ],
+    "created_at": "2025-04-22",
+    "family": "auth-f02",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Involves a DNS record, but the impact is delayed password-reset emails, which stay auth by category policy."
+   },
+   {
+    "ticket_id": "T-2742",
+    "category": "auth",
+    "subject": "OIDC sign-in returns 401 though nothing was changed",
+    "description": "Since this morning the SSO button sends people back to the login page with 'Identity provider rejected the request (401)'. The customer insists nobody touched the configuration.",
+    "resolution_notes": "Their IdP app registration enforces a 180-day secret lifetime, and the secret had lapsed overnight, so our token request failed authentication. The admin issued a new secret and updated the workspace; the SSO settings page now lets admins record the secret's expiry date and shows a banner 14 days ahead. Users signed in successfully within ten minutes.",
+    "tags": [
+     "oidc",
+     "secret-expiry",
+     "sso"
+    ],
+    "created_at": "2026-05-06",
+    "family": "auth-f05",
+    "related_group": "auth-g08",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2779",
+    "category": "auth",
+    "subject": "'Continue with SSO' fails with invalid_client",
+    "description": "Customer using OpenID Connect sign-in reports that every attempt now ends on an error page reading 'invalid_client'.",
+    "resolution_notes": "The client secret in the customer's identity provider app registration had reached its 12-month expiry, so the token exchange was rejected. The admin generated a new secret and entered it in the workspace SSO settings. Sign-in worked for all users immediately.",
+    "tags": [
+     "oidc",
+     "client-secret",
+     "sso"
+    ],
+    "created_at": "2025-06-18",
+    "family": "auth-f05",
+    "related_group": "auth-g08",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2784",
+    "category": "auth",
+    "subject": "HTTP 431 after SSO for users in many groups",
+    "description": "Some users see 'Request header fields too large (431)' immediately after OIDC sign-in. All of them belong to well over a hundred directory groups; users with few groups are fine.",
+    "resolution_notes": "The ID token listed every group membership, and keeping it in the session cookie pushed request headers past the server limit. The customer filtered the groups claim to the groups assigned to our app, and we moved token storage server-side so cookie size no longer depends on the claim. Affected users signed in without errors.",
+    "tags": [
+     "oidc",
+     "groups-claim",
+     "header-size"
+    ],
+    "created_at": "2026-08-11",
+    "family": "auth-f05",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Directory groups are involved, but the failure occurs during sign-in before any permission check, so auth rather than perm."
+   },
+   {
+    "ticket_id": "T-2785",
+    "category": "auth",
+    "subject": "Repeated reset requests appear to do nothing",
+    "description": "A store manager clicked 'Forgot password' six times in ten minutes and says no emails came at all, although the page showed the normal confirmation every time.",
+    "resolution_notes": "The five emails that were sent had been filed into an archive folder by a mailbox rule, and the sixth request was silently dropped by the five-per-hour limit. With the customer's admin we found the emails through message tracking; the manager used the newest one, since each request invalidates the previous link, and signed in. The reset page now tells users when the hourly request limit has been reached.",
+    "tags": [
+     "password-reset",
+     "rate-limit",
+     "mailbox-rule"
+    ],
+    "created_at": "2026-03-10",
+    "family": "auth-f02",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   }
+  ],
+  "billing": [
+   {
+    "ticket_id": "T-2097",
+    "category": "billing",
+    "subject": "Year-two invoice missing multi-year commitment discount",
+    "description": "Procurement flagged that the 20% discount for their three-year commitment appears on the first year's invoice but not on year two's.",
+    "resolution_notes": "Year two was generated as a new subscription term, and the commitment discount, held on the first term's record, did not carry over. Because migrating contract discounts to account level was still in progress, applied a manual credit equal to the discount as an interim measure; the permanent migration was scheduled for the next billing release. Confirmed the net amount due matched the order form.",
+    "tags": [
+     "multi-year-discount",
+     "renewal",
+     "manual-credit"
+    ],
+    "created_at": "2026-05-19",
+    "family": "billing-f04",
+    "related_group": "billing-g03",
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2222",
+    "category": "billing",
+    "subject": "Monthly invoice email stopped arriving",
+    "description": "The customer no longer receives the monthly invoice email, although new invoices still appear in Billing Center.",
+    "resolution_notes": "Invoice emails go only to billing contacts, and a contact cleanup had removed the finance mailbox from that list while leaving it as a workspace user. Re-added the mailbox as a billing contact and resent the last two invoices. The customer confirmed both arrived.",
+    "tags": [
+     "invoice-email",
+     "billing-contact"
+    ],
+    "created_at": "2026-02-03",
+    "family": "billing-f09",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "These are invoice notifications rather than scheduled report deliveries, so the ticket belongs to billing, not export."
+   },
+   {
+    "ticket_id": "T-2223",
+    "category": "billing",
+    "subject": "Upgrade proration showed up an invoice later than expected",
+    "description": "The customer's accounts payable team says an upgrade made on the evening of 30 April appeared on the June invoice instead of May's, which breaks their monthly accrual.",
+    "resolution_notes": "Subscriptions bill on UTC, and the upgrade at 23:40 local time was already 1 May in UTC, so it fell into the next period and was invoiced in June. The amount itself was correct; we sent a statement explaining the timing for their auditors and recorded the UTC billing anchor in the account's billing profile. The customer confirmed this settled their accrual question.",
+    "tags": [
+     "proration",
+     "billing-timezone",
+     "invoice-timing"
+    ],
+    "created_at": "2025-06-04",
+    "family": "billing-f02",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2294",
+    "category": "billing",
+    "subject": "'Payment failed' email for an invoice paid against a PO",
+    "description": "Customer received a payment failure email for an invoice their accounts payable team had already paid by transfer against a purchase order.",
+    "resolution_notes": "The account was on invoiced terms but still held an old card, and the system tried that card before the transfer had been allocated, which generated the failure email. Removed the stale card, confirmed the invoice shows as paid by transfer and voided the failed charge attempt. Verified that no further dunning emails were scheduled.",
+    "tags": [
+     "payment-failure-notice",
+     "purchase-order",
+     "stale-card"
+    ],
+    "created_at": "2026-11-04",
+    "family": "billing-f06",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2461",
+    "category": "billing",
+    "subject": "Overdue reminders bouncing off a departed colleague's address",
+    "description": "The customer only learned their invoice was 45 days overdue when their account manager phoned; our reminder emails had been going to an address that bounces.",
+    "resolution_notes": "The billing contact is stored separately from workspace admins and still pointed at a deactivated mailbox, and bounces on dunning emails were not surfaced to anyone. Updated the billing contact to the finance team's shared address and added a secondary contact. Confirmed the next reminder was delivered and the invoice was paid the same day.",
+    "tags": [
+     "dunning",
+     "billing-contact",
+     "email-bounce"
+    ],
+    "created_at": "2026-09-02",
+    "family": "billing-f06",
+    "related_group": "billing-g09",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2610",
+    "category": "billing",
+    "subject": "Data rows overage for a store we disconnected",
+    "description": "The customer disconnected a legacy e-commerce store in May, but June's invoice includes a data rows overage as if that store's history were still loaded.",
+    "resolution_notes": "Rows from disconnected sources are retained for 30 days in case of reconnection, and the usage meter counted them during that window. Credited the overage and purged the legacy source's rows at the customer's request. Confirmed the meter fell below the plan allowance.",
+    "tags": [
+     "usage-meter",
+     "data-rows-overage",
+     "disconnected-source"
+    ],
+    "created_at": "2025-07-08",
+    "family": "billing-f11",
+    "related_group": "billing-g07",
+    "challenge": null,
+    "classification_rationale": "A connector is involved, but the issue is the metered charge rather than ingestion, so it is billing rather than sync."
+   },
+   {
+    "ticket_id": "T-2850",
+    "category": "billing",
+    "subject": "Workspace went read-only with 'payment overdue' banner",
+    "description": "Store managers suddenly cannot create or edit dashboards and see a banner reading 'Account on hold - payment overdue'. The admin says nobody received any payment failure emails.",
+    "resolution_notes": "The renewal charge had failed three times and every dunning email went to the billing contact address of an employee who had left. The customer paid the overdue invoice, we lifted the hold, and the admin changed the billing contact to a shared finance mailbox. Confirmed editing worked again and the banner cleared.",
+    "tags": [
+     "account-hold",
+     "dunning",
+     "billing-contact"
+    ],
+    "created_at": "2025-05-06",
+    "family": "billing-f06",
+    "related_group": "billing-g09",
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "Users lost the ability to edit, but the cause was a payment hold rather than role configuration, so it is billing rather than perm."
+   },
+   {
+    "ticket_id": "T-2957",
+    "category": "billing",
+    "subject": "Automation user counted as a paid seat",
+    "description": "The admin created a user named reporting-bot for a scheduled script and noticed it takes up a seat. They asked whether non-human accounts should be billed at all.",
+    "resolution_notes": "Users created on the Users page are named seats regardless of who operates them, while the plan's service credentials are not billed. Helped the admin create a read-only service credential, move the script to it and deactivate the reporting-bot user. Confirmed the seat counter dropped by one.",
+    "tags": [
+     "seat-count",
+     "service-account"
+    ],
+    "created_at": "2025-11-26",
+    "family": "billing-f01",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The remedy uses a service credential, but the question was whether an account consumes a paid seat, so it is billing rather than api."
+   }
+  ],
+  "connectivity": [
+   {
+    "ticket_id": "T-2002",
+    "category": "connectivity",
+    "subject": "New IP allow-list blocks most of the office, but not everyone",
+    "description": "After an admin enabled the IP allow-list, some staff can reach the app from the office while most colleagues on the same network are blocked, and who gets in changes from hour to hour.",
+    "resolution_notes": "The office egresses through a pool of NAT addresses, but the allow-list entry was typed as 203.0.113.10/32 instead of the pool's 203.0.113.0/28, so only connections leaving through that one address were allowed. Corrected the entry to the full range. All office users have access.",
+    "tags": [
+     "ip-allow-list",
+     "cidr",
+     "nat-pool"
+    ],
+    "created_at": "2025-04-09",
+    "family": "connectivity-f12",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2008",
+    "category": "connectivity",
+    "subject": "Reporting tool gets certificate name mismatch from the data API",
+    "description": "The customer's on-prem reporting tool connecting to api.example.net reports that the certificate was issued for a different hostname.",
+    "resolution_notes": "The tool's old runtime did not send SNI, so the product's edge returned its default certificate instead of the one for api.example.net. The customer updated the tool to a runtime version that sends SNI. The correct certificate was presented and the connection validated.",
+    "tags": [
+     "sni",
+     "certificate-mismatch",
+     "reporting-tool"
+    ],
+    "created_at": "2026-09-01",
+    "family": "connectivity-f08",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The failure was in the TLS handshake on the network path, not in API keys or request handling, so this is connectivity rather than api."
+   },
+   {
+    "ticket_id": "T-2050",
+    "category": "connectivity",
+    "subject": "Live sales tiles stuck on 'Reconnecting…' at head office",
+    "description": "Everyone at the customer's head office sees the real-time sales tiles show 'Reconnecting…' indefinitely, while the rest of each dashboard loads normally.",
+    "resolution_notes": "The customer's explicit proxy did not permit HTTP Upgrade requests, so the WebSocket connection to live.example.net used by real-time tiles was refused. The proxy team enabled WebSocket upgrades for live.example.net. Live tiles now update within five seconds of a test sale.",
+    "tags": [
+     "proxy",
+     "websocket",
+     "real-time-tiles"
+    ],
+    "created_at": "2025-03-18",
+    "family": "connectivity-f02",
+    "related_group": "connectivity-g03",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2401",
+    "category": "connectivity",
+    "subject": "Real-time order counter frozen on corporate laptops",
+    "description": "Per the customer: 'The order counter never moves on our work laptops, but on our phones it ticks up all day.' Both use the same accounts.",
+    "resolution_notes": "Corporate laptops route web traffic through the company proxy, which was stripping the Upgrade and Connection headers, so the live channel could not open; phones on mobile data bypass the proxy. After the network team allowed WebSocket upgrades to live.example.net, the counter updated on laptops as well.",
+    "tags": [
+     "proxy",
+     "websocket",
+     "live-updates"
+    ],
+    "created_at": "2025-08-27",
+    "family": "connectivity-f02",
+    "related_group": "connectivity-g03",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2429",
+    "category": "connectivity",
+    "subject": "Embedded dashboard blocked after intranet moved to a new domain",
+    "description": "The customer moved their intranet from portal.alderash.example.com to hub.alderash.example.com, and embedded dashboards now show a blocked-frame message.",
+    "resolution_notes": "The workspace's allowed embed origins, which the product sends as its frame-ancestors policy, still listed only the old intranet origin. The admin added https://hub.alderash.example.com as an exact origin rather than a wildcard. Embeds load on the new intranet and remain blocked elsewhere.",
+    "tags": [
+     "embedding",
+     "frame-ancestors",
+     "allowed-origins"
+    ],
+    "created_at": "2025-05-28",
+    "family": "connectivity-f07",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "The frame was blocked by an origin policy enforced in the browser, not by user permissions, so this sits in connectivity rather than perm."
+   },
+   {
+    "ticket_id": "T-2549",
+    "category": "connectivity",
+    "subject": "Nightly SFTP pull failing about half the time",
+    "description": "Customer reports the nightly pull from their on-prem file server sftp.harborpine.example.com has failed on roughly every second run since last week with 'connection timed out after 30s'; manual retries sometimes succeed.",
+    "resolution_notes": "The connector worker pool had been expanded with a second egress range, 198.51.100.32/28, announced in the release notes, but the customer's perimeter firewall only allowed the original 198.51.100.0/28, so runs scheduled on new workers timed out. The customer's network team added the new range to the existing SFTP rule, port 22 only. Seven consecutive nightly pulls then completed without retries.",
+    "tags": [
+     "egress-ip",
+     "firewall",
+     "sftp"
+    ],
+    "created_at": "2025-04-22",
+    "family": "connectivity-f01",
+    "related_group": "connectivity-g01",
+    "challenge": null,
+    "classification_rationale": "The sync failures were caused by the customer's firewall dropping the product's traffic, not by credentials or connector logic."
+   },
+   {
+    "ticket_id": "T-2558",
+    "category": "connectivity",
+    "subject": "Store tablets on IPv6-only network can't get live updates",
+    "description": "On the customer's new IPv6-only store network, tablets load dashboards but live tiles never connect.",
+    "resolution_notes": "The real-time host live.example.net had no AAAA record, and DNS64/NAT64 had not been enabled on the new store VLAN, so tablets could not reach it. As a workaround the customer enabled DNS64/NAT64 on that VLAN, which restored live tiles; publishing native IPv6 records for the real-time host is scheduled on our side. Live tiles updated on test tablets.",
+    "tags": [
+     "ipv6",
+     "nat64",
+     "live-tiles"
+    ],
+    "created_at": "2026-08-25",
+    "family": "connectivity-f13",
+    "related_group": null,
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2580",
+    "category": "connectivity",
+    "subject": "Intermittent 'server not found' from validating resolvers",
+    "description": "Several customers whose networks use DNSSEC-validating resolvers reported 'server not found' for the product for about two hours, while other customers were unaffected.",
+    "resolution_notes": "A DNSSEC key rollover on the product's own zone was performed with too short an overlap, so validating resolvers holding the previous DS record treated new responses as bogus. Our operations team re-published both keys and extended the overlap to a full TTL cycle. Validation succeeded from public test resolvers and affected customers confirmed recovery.",
+    "tags": [
+     "dns",
+     "dnssec",
+     "resolution-failure"
+    ],
+    "created_at": "2025-12-16",
+    "family": "connectivity-f04",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2609",
+    "category": "connectivity",
+    "subject": "Embedded live board on store intranet never refreshes",
+    "description": "The customer embeds a live sales board in their store intranet; it loads once and then never updates, unlike the same board opened directly in the app from home.",
+    "resolution_notes": "Store traffic passes through the corporate proxy, which blocked the WebSocket upgrade the embedded board uses for live data, so the embed only ever showed its initial snapshot. Allowing WebSocket upgrades to live.example.net on the proxy resolved it; the embedded board updated continuously during a 30-minute test at two stores.",
+    "tags": [
+     "proxy",
+     "websocket",
+     "embedded-dashboard"
+    ],
+    "created_at": "2026-03-10",
+    "family": "connectivity-f02",
+    "related_group": "connectivity-g03",
+    "challenge": "related_symptom_different_product",
+    "classification_rationale": "The embed itself loaded; only its live data channel was blocked by the proxy, so this is connectivity rather than render."
+   },
+   {
+    "ticket_id": "T-2639",
+    "category": "connectivity",
+    "subject": "SSO works in the office, fails at home",
+    "description": "Customer's staff can sign in through SSO at the office but get a browser timeout on the identity provider page when working from home without VPN.",
+    "resolution_notes": "The customer's on-prem federation server was only reachable on the internal network, so browsers outside could not complete the redirect. The customer published the federation server through their reverse proxy for external access, protected by their usual MFA policy. Remote staff now complete sign-in without VPN.",
+    "tags": [
+     "sso",
+     "federation-server",
+     "remote-access"
+    ],
+    "created_at": "2025-03-25",
+    "family": "connectivity-f09",
+    "related_group": null,
+    "challenge": "negation_or_opposite",
+    "classification_rationale": "Credentials and assertions were fine; browsers outside the office could not reach the IdP, so this is connectivity rather than auth."
+   },
+   {
+    "ticket_id": "T-2739",
+    "category": "connectivity",
+    "subject": "Some widget types missing on managed browsers",
+    "description": "On laptops with the customer's managed browser profile, three widget types never appear and leave gaps on dashboards; unmanaged browsers show everything.",
+    "resolution_notes": "The managed profile includes a content-blocking extension whose filter list blocks script paths containing '/analytics/', which matched the bundle for those widget types. As a workaround the customer's IT team added the product's domains to the extension's allow-list for that profile; our front-end team is renaming the asset path in an upcoming release so it no longer matches common filter lists. Widgets display on managed laptops.",
+    "tags": [
+     "browser-extension",
+     "content-blocking",
+     "managed-browser"
+    ],
+    "created_at": "2025-09-02",
+    "family": "connectivity-f14",
+    "related_group": null,
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": "The widget resources were blocked from loading by the customer's content filter rather than drawn incorrectly, so this is connectivity rather than render."
+   }
+  ],
+  "data_quality": [
+   {
+    "ticket_id": "T-2258",
+    "category": "data_quality",
+    "subject": "JPY to USD revenue off by hundreds of dollars on large days",
+    "description": "For the customer's Tokyo stores, converted USD revenue differs from treasury's calculation by $200-$900 on busy days, even though the correct daily rates are being used.",
+    "resolution_notes": "The rate table stored exchange rates truncated to four decimal places, so a JPY-USD rate of 0.006694 was held as 0.0066, about 1.4% low on every yen. Increased stored rate precision to ten significant digits, reloaded the rate history and recomputed. Daily converted totals now match treasury within one cent.",
+    "tags": [
+     "numeric-precision",
+     "fx-rates",
+     "jpy"
+    ],
+    "created_at": "2025-08-26",
+    "family": "data_quality-f07",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "Rates were applied for the right dates; the drift came from truncated rate precision, a numeric precision defect rather than a conversion-date error."
+   },
+   {
+    "ticket_id": "T-2391",
+    "category": "data_quality",
+    "subject": "Pacific stores' Sunday evening sales showing on Monday",
+    "description": "Regional manager says late Sunday transactions from the Pacific-time stores appear under Monday in the daily sales table, while the POS end-of-day report has them on Sunday.",
+    "resolution_notes": "Daily store aggregates were bucketed on UTC midnight rather than each store's configured local time zone, so anything rung up after 4-5 pm Pacific rolled into the next day. Rebuilt daily aggregates using per-store time zones and backfilled 90 days. Sunday totals for three sample stores now match their POS Z-reports exactly.",
+    "tags": [
+     "timezone",
+     "daily-buckets",
+     "store-sales"
+    ],
+    "created_at": "2025-02-17",
+    "family": "data_quality-f02",
+    "related_group": "data_quality-g02",
+    "challenge": null,
+    "classification_rationale": "Every transaction was present, so this is a bucketing error in aggregation rather than a sync gap."
+   },
+   {
+    "ticket_id": "T-2544",
+    "category": "data_quality",
+    "subject": "Hourly sales double at 1 AM on the night clocks went back",
+    "description": "On the Hourly Sales chart for 2 November, the 1:00 bar is roughly twice its usual height for every US store, and store teams insist that hour was quiet.",
+    "resolution_notes": "Hourly aggregation keyed buckets by the local wall-clock label, so the two distinct 1:00-1:59 hours on the fall-back night were merged into one bucket. Changed hourly bucketing to UTC instants labelled with their local offset, which yields 25 buckets for that day, and reprocessed the date. The chart now shows separate 1:00 EDT and 1:00 EST entries, each matching register totals.",
+    "tags": [
+     "timezone",
+     "daylight-saving",
+     "hourly-aggregation"
+    ],
+    "created_at": "2025-11-04",
+    "family": "data_quality-f02",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The values inside the bucket were wrong, not just the way the chart drew them, so this is data_quality rather than render."
+   },
+   {
+    "ticket_id": "T-2572",
+    "category": "data_quality",
+    "subject": "Month-to-date growth shows -60% on the 10th",
+    "description": "Every month the MTD revenue tile shows large negative growth during the first weeks, only recovering by month end.",
+    "resolution_notes": "The month-to-date comparison used the full prior month as its base instead of the same number of elapsed days. Changed to-date comparisons to align on elapsed days (1st-10th against 1st-10th) and recomputed. On the 10th of the following month the tile showed +3.2%, consistent with the daily trend.",
+    "tags": [
+     "period-comparison",
+     "month-to-date",
+     "growth"
+    ],
+    "created_at": "2025-09-10",
+    "family": "data_quality-f11",
+    "related_group": "data_quality-g15",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2591",
+    "category": "data_quality",
+    "subject": "Rounded commission totals don't match finance's convention",
+    "description": "Customer's finance team rounds commissions half-up, so 2.345 becomes 2.35, but the Staff Commission report gives 2.34 for the same value.",
+    "resolution_notes": "The commission calculation used round-half-to-even, which sends exact halves to the nearest even digit. Changed the commission metric to round half-up, consistent with the customer's payroll rules, and recomputed the open period. Ten sample payslips now match finance's figures.",
+    "tags": [
+     "rounding",
+     "rounding-mode",
+     "commissions"
+    ],
+    "created_at": "2025-05-27",
+    "family": "data_quality-f07",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "This changed the computed totals themselves rather than how numbers are formatted on screen, so it is data_quality and not a number-format setting."
+   },
+   {
+    "ticket_id": "T-2627",
+    "category": "data_quality",
+    "subject": "Web orders appear five hours earlier than they were placed",
+    "description": "The ecommerce team says orders placed at 9 pm Eastern show in the order timeline at 4 pm, and orders placed just after midnight count toward the previous day.",
+    "resolution_notes": "The storefront export sends order timestamps without a UTC offset, in store-local Eastern time, and the field was being interpreted as UTC. Set the connector's timestamp interpretation for that source to America/New_York and reprocessed six months of orders. Spot checks of 20 orders matched the storefront's order history to the minute.",
+    "tags": [
+     "timezone",
+     "naive-timestamps",
+     "ecommerce-orders"
+    ],
+    "created_at": "2026-01-20",
+    "family": "data_quality-f02",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "Rows arrived complete; their timestamps were interpreted in the wrong zone after ingestion, which affects bucketing rather than sync completeness."
+   },
+   {
+    "ticket_id": "T-2663",
+    "category": "data_quality",
+    "subject": "Week-to-date indicator red every Monday",
+    "description": "Store managers say the week-to-date versus last week indicator is red every Monday and Tuesday, even for stores clearly trading ahead.",
+    "resolution_notes": "The week-to-date tile compared the partial current week against the whole of last week, so early in the week it always looked behind. The elapsed-period alignment already applied to month-to-date was extended to week-to-date and quarter-to-date tiles. Monday's indicator now compares Monday against last Monday.",
+    "tags": [
+     "period-comparison",
+     "week-to-date",
+     "store-managers"
+    ],
+    "created_at": "2025-09-24",
+    "family": "data_quality-f11",
+    "related_group": "data_quality-g15",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2946",
+    "category": "data_quality",
+    "subject": "Closed stores flagged as 0% conversion",
+    "description": "On Boxing Day, every store that was closed shows 0% conversion on the store leaderboard, and the 'stores below conversion target' tile jumped from 3 to 41.",
+    "resolution_notes": "The conversion formula returned 0 instead of null when the visitor count was 0, so closed stores looked like open stores with no sales. Changed division by zero to return null so those stores drop out of leaderboards and target counts, and recomputed the holiday dates. The tile now shows 2 stores below target for that day, both of which were open.",
+    "tags": [
+     "calculated-fields",
+     "divide-by-zero",
+     "conversion-rate"
+    ],
+    "created_at": "2025-12-30",
+    "family": "data_quality-f10",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   }
+  ],
+  "export": [
+   {
+    "ticket_id": "T-2157",
+    "category": "export",
+    "subject": "Lower half of scheduled PDF is grey placeholders",
+    "description": "Scheduled PDF reports show the top widgets correctly, but everything below the first screen height is grey placeholder boxes.",
+    "resolution_notes": "Widgets outside the initial viewport load only when scrolled into view, and the headless renderer captured the page without triggering them. Disabled lazy loading for export rendering on the workspace. Confirmed the next scheduled PDF showed all 18 widgets.",
+    "tags": [
+     "scheduled-pdf",
+     "lazy-loading",
+     "placeholders"
+    ],
+    "created_at": "2025-02-25",
+    "family": "export-f08",
+    "related_group": "export-g05",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2351",
+    "category": "export",
+    "subject": "Order timestamps in CSV five hours ahead of dashboard",
+    "description": "Order timestamps in CSV exports appear five hours later than the same orders on the dashboard.",
+    "resolution_notes": "Exports wrote timestamps in UTC without an offset, while the dashboard shows them in the workspace time zone. Enabled the export option that converts timestamps to the workspace time zone and appends the offset. Confirmed exported times matched the dashboard.",
+    "tags": [
+     "timestamps",
+     "utc-offset",
+     "csv"
+    ],
+    "created_at": "2025-05-08",
+    "family": "export-f07",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "The stored values are correct and the dashboard shows them correctly; only the export file representation differed, so export rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2389",
+    "category": "export",
+    "subject": "'Unsupported field type: geo_point' on CSV export",
+    "description": "Exporting the store locations table to CSV fails with 'Export failed: Unsupported field type: geo_point'.",
+    "resolution_notes": "The CSV writer had no serializer for geographic point fields. As a workaround the customer added calculated latitude and longitude columns and excluded the geo field; native support, writing points as 'lat,lon' text, shipped two weeks later. Confirmed the original table exported successfully after the release.",
+    "tags": [
+     "csv",
+     "field-type",
+     "geo-field"
+    ],
+    "created_at": "2025-11-05",
+    "family": "export-f02",
+    "related_group": null,
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2422",
+    "category": "export",
+    "subject": "Daily inventory report arriving before the overnight data",
+    "description": "Agent summary: US retailer, daily inventory report set for 06:00 has been arriving at 05:00 since early November, so regional managers get a snapshot that misses the overnight receiving batch.",
+    "resolution_notes": "Schedules created before a scheduler change saved a fixed offset, so when daylight saving ended the run moved to 05:00 local time, before the receiving batch had loaded. Re-saved the schedule with the named time zone and sent a one-off delivery with complete data. Confirmed the following morning's report arrived at 06:00 including the overnight receipts.",
+    "tags": [
+     "scheduled-report",
+     "daylight-saving",
+     "delivery-time"
+    ],
+    "created_at": "2025-11-12",
+    "family": "export-f03",
+    "related_group": "export-g01",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2501",
+    "category": "export",
+    "subject": "KPI tiles print 'Loading…' in exported PDF",
+    "description": "Some KPI tiles in the exported PDF literally show the text 'Loading…' instead of their numbers.",
+    "resolution_notes": "The renderer captured the dashboard before the slower tiles' queries had returned. As a workaround the author moved the slow tiles to the top so they started loading first; the permanent change, making the renderer wait for every widget's ready signal, followed in a later release. Confirmed the tiles showed values after the workaround and again after the release.",
+    "tags": [
+     "pdf",
+     "kpi-tile",
+     "render-timing"
+    ],
+    "created_at": "2025-01-20",
+    "family": "export-f08",
+    "related_group": "export-g05",
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2673",
+    "category": "export",
+    "subject": "Inventory export ends with 'Partial results: query time limit reached'",
+    "description": "Store operations exported inventory snapshots for 400 stores; the file stops with the footer 'Partial results: query time limit reached'.",
+    "resolution_notes": "The export ran the whole inventory query in one pass and hit the 10-minute per-query limit for export jobs, so the file was written with whatever had returned. Enabled chunked export by store for the workspace, which keeps each chunk within the limit and assembles the file at the end. Confirmed the export completed for all 400 stores without the footer.",
+    "tags": [
+     "inventory-export",
+     "query-time-limit",
+     "chunked-export"
+    ],
+    "created_at": "2026-06-18",
+    "family": "export-f01",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The symptom is a truncated export file produced by an export-job limit rather than general slowness of the application, so it is export rather than perf."
+   },
+   {
+    "ticket_id": "T-2833",
+    "category": "export",
+    "subject": "Names still corrupted with 'UTF-8 with BOM' enabled",
+    "description": "Even with 'UTF-8 with BOM' switched on, some customer names in CSV exports show replacement characters (�) instead of accented letters.",
+    "resolution_notes": "A previous admin had enabled the 'ASCII-safe output' sanitiser on the export profile, which replaces every non-ASCII character. With the current admin's agreement, turned the sanitiser off. Confirmed accented names exported intact.",
+    "tags": [
+     "csv",
+     "export-sanitizer",
+     "character-encoding"
+    ],
+    "created_at": "2026-01-21",
+    "family": "export-f05",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2860",
+    "category": "export",
+    "subject": "Revenue cells flagged 'Number stored as text'",
+    "description": "Every revenue cell in the XLSX export shows the 'Number stored as text' warning, and SUM returns 0.",
+    "resolution_notes": "The revenue field was a calculated field with string output because it concatenated a currency symbol. Changed the calculated field to return a number and applied currency formatting in the widget instead. Confirmed the exported cells summed correctly.",
+    "tags": [
+     "xlsx",
+     "cell-type",
+     "calculated-field"
+    ],
+    "created_at": "2026-07-23",
+    "family": "export-f09",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The revenue values themselves are correct; only the cell type in the export was wrong, so it is export rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2885",
+    "category": "export",
+    "subject": "Three charts empty in PDF export",
+    "description": "The PDF export of the store performance dashboard contains titles and tables, but three chart areas are empty boxes; on screen the charts look fine.",
+    "resolution_notes": "The PDF renderer took its snapshot before lazy-loaded widgets below the fold had finished loading. The renderer was changed to wait for each widget's ready signal before capturing. Confirmed all charts appeared in the next PDF.",
+    "tags": [
+     "pdf",
+     "missing-charts",
+     "lazy-loading"
+    ],
+    "created_at": "2025-03-18",
+    "family": "export-f08",
+    "related_group": "export-g05",
+    "challenge": "related_symptom_different_product",
+    "classification_rationale": "The charts display correctly on screen and are blank only in the generated PDF, so the problem is in export rather than render."
+   }
+  ],
+  "perf": [
+   {
+    "ticket_id": "T-2155",
+    "category": "perf",
+    "subject": "Adding 'channel' breakdown made the sales board slow",
+    "description": "Customer added a breakdown by sales channel (store, web, marketplace) to their sales board and it went from loading in 2 seconds to around 25 seconds.",
+    "resolution_notes": "The pre-aggregated rollup did not include the channel dimension, so any widget split by channel bypassed the rollup and queried raw transactions. Added channel to the rollup definition and rebuilt it. The board with the channel breakdown now loads in about 2 seconds.",
+    "tags": [
+     "rollup-coverage",
+     "new-dimension",
+     "aggregate-miss"
+    ],
+    "created_at": "2026-03-04",
+    "family": "perf-f07",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2313",
+    "category": "perf",
+    "subject": "Dashboards never seem to use the cache",
+    "description": "The customer's operations team says their dashboards always behave like a cold load, 10-15 seconds per view, all day long. Their connected point-of-sale source sends small updates every two minutes.",
+    "resolution_notes": "Every incoming micro-batch invalidated the entire workspace cache rather than only the datasets that changed, so the cache was cleared roughly every two minutes. Scoped invalidation to the affected dataset and added a 5-minute minimum freshness window, which the customer agreed to. Cache hit rate rose from under 5% to about 80% and typical loads are now under 3 seconds.",
+    "tags": [
+     "cache-invalidation",
+     "micro-batch",
+     "cache-hit-rate"
+    ],
+    "created_at": "2025-09-18",
+    "family": "perf-f02",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Data arrives correctly and on time, so this is not sync; the problem is that each arrival wipes the cache and slows queries."
+   },
+   {
+    "ticket_id": "T-2382",
+    "category": "perf",
+    "subject": "Slow dashboards every afternoon with no change in usage",
+    "description": "Customer reports dashboards become two to three times slower between roughly 14:00 and 15:30 each weekday. Their own usage and data volume are flat across the day.",
+    "resolution_notes": "The customer's workspace shared a compute pool with another tenant whose large daily batch analysis started at 14:00, saturating shared CPU. Moved the customer to a less contended pool and tightened per-tenant CPU limits on shared pools. Afternoon load times now match the morning baseline.",
+    "tags": [
+     "noisy-neighbor",
+     "shared-compute",
+     "afternoon-slowdown"
+    ],
+    "created_at": "2026-01-13",
+    "family": "perf-f06",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2395",
+    "category": "perf",
+    "subject": "Dashboard gets slower the longer it stays open",
+    "description": "Customer says if they leave the KPI dashboard open all day, hovering and scrolling become sluggish by afternoon. Reloading the page fixes it until the next day.",
+    "resolution_notes": "Browser profiling showed thousands of detached chart tooltip elements and duplicate resize handlers, one set added per auto-refresh. The chart component patch released on 30 July cleans up handlers and tooltips when it re-renders. After the release, memory use stayed flat over a full working day.",
+    "tags": [
+     "memory-leak",
+     "event-listeners",
+     "long-session"
+    ],
+    "created_at": "2025-07-22",
+    "family": "perf-f12",
+    "related_group": "perf-g07",
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2497",
+    "category": "perf",
+    "subject": "Wall display browser crashes overnight",
+    "description": "The customer runs the sales dashboard on a wall-mounted screen in their head office. Every morning the screen shows the browser's out-of-memory error page.",
+    "resolution_notes": "Each auto-refresh created new chart tooltips and resize listeners without removing the old ones, so memory grew steadily until the browser ran out. Enabled the nightly page reload option for the display as a stopgap until the chart component fix, which disposes of previous instances on refresh, shipped on 30 July. After the fix a test screen stayed at a stable memory level for 72 hours.",
+    "tags": [
+     "memory-leak",
+     "wall-display",
+     "auto-refresh"
+    ],
+    "created_at": "2025-07-15",
+    "family": "perf-f12",
+    "related_group": "perf-g07",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2530",
+    "category": "perf",
+    "subject": "Promotion impact dashboard times out",
+    "description": "The promotion impact dashboard joins promotions to products and has started timing out since the customer loaded their new loyalty campaign, which applies to thousands of products.",
+    "resolution_notes": "Promotions and products are many-to-many, and the query joined both sides at line level before aggregating, creating around 2 billion intermediate rows; results were de-duplicated correctly but very slowly. Rewrote the model to aggregate through the promotion-product bridge before joining sales. The dashboard loads in 6 seconds and spot-checked totals were unchanged.",
+    "tags": [
+     "many-to-many",
+     "join-explosion",
+     "promotions"
+    ],
+    "created_at": "2025-12-03",
+    "family": "perf-f05",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2554",
+    "category": "perf",
+    "subject": "Dashboards using 'delivery date' field load slowly",
+    "description": "Customer's delivery date arrives as text (DD/MM/YYYY) and they built a calculated field to convert it. Widgets that filter on that field take around 20 seconds.",
+    "resolution_notes": "The conversion was parsed on every row and every query, and filtering on a parsed value prevented any index use. Added a typed date column populated during load from the same parsing rule, and switched the widgets to it. Spot checks showed the same dates and the widgets now load in about a second.",
+    "tags": [
+     "date-parsing",
+     "calculated-field",
+     "typed-column"
+    ],
+    "created_at": "2026-01-07",
+    "family": "perf-f08",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "The parsed dates were correct, so this is not data_quality; parsing text on every query only made the dashboard slow."
+   },
+   {
+    "ticket_id": "T-2727",
+    "category": "perf",
+    "subject": "Back-office kiosk needs restarting every afternoon",
+    "description": "Store back-office PCs show the stock dashboard in kiosk mode. Staff say by around 15:00 the PC is crawling and they restart it daily.",
+    "resolution_notes": "The kiosk dashboard refreshed every 5 minutes and leaked chart tooltip and listener objects on each refresh, the same chart defect already under investigation. The cleanup fix that disposes of old instances was deployed on 30 July, and afterwards the kiosks ran a full trading day without slowing down.",
+    "tags": [
+     "kiosk-mode",
+     "memory-leak",
+     "store-back-office"
+    ],
+    "created_at": "2025-07-18",
+    "family": "perf-f12",
+    "related_group": "perf-g07",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2733",
+    "category": "perf",
+    "subject": "Dashboards slow until late morning since history backfill",
+    "description": "Since the customer loaded six years of historical sales last week, their dashboards are slow every morning until about 11:00, then fast for the rest of the day.",
+    "resolution_notes": "After the backfill the nightly rollup refresh rebuilt every historical partition instead of only changed ones, so it ran until late morning and dashboards fell back to raw tables meanwhile. Corrected change tracking so only modified partitions are rebuilt. The refresh now finishes by 3:30 and morning dashboards use rollups again.",
+    "tags": [
+     "rollup-refresh",
+     "backfill",
+     "incremental-refresh"
+    ],
+    "created_at": "2025-05-14",
+    "family": "perf-f07",
+    "related_group": "perf-g05",
+    "challenge": null,
+    "classification_rationale": "The backfilled data loaded successfully and totals are correct; only query speed suffered while rollups rebuilt, so perf rather than sync."
+   }
+  ],
+  "perm": [
+   {
+    "ticket_id": "T-2027",
+    "category": "perm",
+    "subject": "Regional managers lost editor rights overnight",
+    "description": "A dozen regional managers who sign in through SSO were all downgraded to Viewer overnight, with no change on the customer's side that they know of.",
+    "resolution_notes": "The customer's IT team had renamed the directory group 'Regional-Managers' to 'regional-managers', and our group-to-role mapping compared names case-sensitively, so it stopped matching and users fell back to the default role. Updated the mapping to the new name. Confirmed the managers had Editor again on their next sign-in.",
+    "tags": [
+     "group-mapping",
+     "sso-groups",
+     "case-sensitivity"
+    ],
+    "created_at": "2025-02-20",
+    "family": "perm-f03",
+    "related_group": "perm-g01",
+    "challenge": null,
+    "classification_rationale": "Sign-in worked; the problem was the role assigned from group mapping, so perm rather than auth."
+   },
+   {
+    "ticket_id": "T-2335",
+    "category": "perm",
+    "subject": "Supplier reps land on 'Access expired' mid-quarter",
+    "description": "Supplier representatives can still sign in but land on an 'Access expired' notice instead of the shared sell-through dashboard.",
+    "resolution_notes": "Their guest access had been created with the default 30-day expiry. Set an expiry matching the supplier agreement, the end of the quarter, and turned on a 7-day reminder to the inviter before expiry. Confirmed the representatives could open the dashboard.",
+    "tags": [
+     "guest-access",
+     "guest-expiry",
+     "supplier-access"
+    ],
+    "created_at": "2026-01-22",
+    "family": "perm-f12",
+    "related_group": "perm-g06",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2379",
+    "category": "perm",
+    "subject": "Manually promoted SSO users revert to Viewer at every login",
+    "description": "The admin promoted several SSO users to Editor by hand, but each time they log in their role resets to Viewer.",
+    "resolution_notes": "Role mapping from the identity provider was set to 'enforce on every sign-in', which overwrites manual role changes. The admin chose to manage roles through groups and created an Editors group mapping. Confirmed the users kept Editor across sign-ins.",
+    "tags": [
+     "role-enforcement",
+     "group-mapping",
+     "sso-provisioning"
+    ],
+    "created_at": "2026-09-24",
+    "family": "perm-f03",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "The reset happens at login, but the issue is role assignment rather than authentication, so perm rather than auth."
+   },
+   {
+    "ticket_id": "T-2492",
+    "category": "perm",
+    "subject": "Ownership transfer handed over personal drafts too",
+    "description": "After an ownership transfer, the new owner found the departed user's personal draft dashboards, including salary planning notes, in their own space.",
+    "resolution_notes": "The transfer tool included personal-space drafts by default. With the admin, moved the drafts to an admin-only archive folder, and the transfer dialog now excludes personal drafts unless they are selected. Confirmed the new owner no longer had access to them.",
+    "tags": [
+     "ownership-transfer",
+     "personal-drafts",
+     "over-sharing"
+    ],
+    "created_at": "2025-08-28",
+    "family": "perm-f10",
+    "related_group": null,
+    "challenge": "negation_or_opposite",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2553",
+    "category": "perm",
+    "subject": "Agency guests told 'Your guest access has ended'",
+    "description": "Contacts at the customer's marketing agency suddenly get 'Your guest access has ended' on dashboards they have used for weeks.",
+    "resolution_notes": "Guest invitations default to a 30-day expiry, and the inviter had not changed it. Extended the guests' access to the contract end date set by the admin. Confirmed the agency contacts could open the dashboards again.",
+    "tags": [
+     "guest-access",
+     "access-expiry",
+     "agency"
+    ],
+    "created_at": "2025-04-03",
+    "family": "perm-f12",
+    "related_group": "perm-g06",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2738",
+    "category": "perm",
+    "subject": "Dashboard shared with a mailing-list address is inaccessible",
+    "description": "An analyst shared a dashboard with the store-managers@example.com list, and none of the managers can open it.",
+    "resolution_notes": "A mailing-list address is not a user, so the share created a pending invitation that nobody could accept. Removed the invitation and shared the dashboard with the Store Managers team instead. Confirmed managers could open it.",
+    "tags": [
+     "dashboard-sharing",
+     "mailing-list",
+     "pending-invitation"
+    ],
+    "created_at": "2026-10-08",
+    "family": "perm-f04",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2774",
+    "category": "perm",
+    "subject": "Obsolete custom role can't be deleted: 'Role in use'",
+    "description": "The admin wants to delete an obsolete custom role but gets 'Role in use', though no active user seems to have it.",
+    "resolution_notes": "The role was still assigned to two deactivated users and referenced by one group mapping. Reassigned the deactivated users to the default role and removed the mapping with the admin's approval. Confirmed the role could then be deleted.",
+    "tags": [
+     "custom-roles",
+     "role-deletion",
+     "group-mapping"
+    ],
+    "created_at": "2025-08-21",
+    "family": "perm-f06",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2881",
+    "category": "perm",
+    "subject": "85 bulk-imported users have no team membership",
+    "description": "After uploading 85 users through the CSV user import, none of them appear in any team and they cannot open team dashboards.",
+    "resolution_notes": "The import file's team column was headed 'Team Name' instead of 'team', so the importer ignored it. Re-ran the import in update mode with the corrected header. Confirmed all 85 users were placed in their teams and could open team dashboards.",
+    "tags": [
+     "user-import",
+     "team-membership",
+     "bulk-provisioning"
+    ],
+    "created_at": "2025-09-12",
+    "family": "perm-f01",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "A CSV upload is used, but it provisions user access rather than ingesting data, so perm rather than sync."
+   }
+  ],
+  "render": [
+   {
+    "ticket_id": "T-2129",
+    "category": "render",
+    "subject": "Two managers see different weekly totals on one dashboard",
+    "description": "Two regional managers looking at the same shared dashboard at the same moment see different weekly totals, though they have identical access.",
+    "resolution_notes": "The results cache key ignored each user's 'week starts on' preference, so a manager whose week starts on Sunday was served results cached for a Monday-start week. Added the preference to the cache key. Each manager now sees totals matching their own week start, and the week boundaries are shown in the widget subtitle.",
+    "tags": [
+     "dashboard-cache",
+     "cache-key",
+     "week-start"
+    ],
+    "created_at": "2026-02-19",
+    "family": "render-f02",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "Both users' settings and the data were correct; the cache served a result computed for another user's week-start setting, so render rather than data_quality or workspace_admin."
+   },
+   {
+    "ticket_id": "T-2259",
+    "category": "render",
+    "subject": "No map pins for any Canadian store",
+    "description": "On the store map, US stores have pins but none of the 18 Canadian stores appear, even though the store table lists them with full addresses.",
+    "resolution_notes": "The map placed pins with a postal-code lookup that only recognised five-digit codes, so Canadian postal codes returned no coordinates. Added international postal-code support and made the map use latitude and longitude from store records where present. All 18 Canadian stores now appear.",
+    "tags": [
+     "store-map",
+     "geocoding",
+     "postal-codes"
+    ],
+    "created_at": "2025-04-24",
+    "family": "render-f10",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The store records were complete; the map's postal-code lookup used only for placing pins failed, so render rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2270",
+    "category": "render",
+    "subject": "Hourly sales chart white on MacBooks, fine on Windows",
+    "description": "The full-year hourly sales chart is a white rectangle on the finance team's MacBooks in Safari. Colleagues on Windows laptops see it normally.",
+    "resolution_notes": "A year of hourly points on a high-resolution display pushed the chart's canvas beyond Safari's maximum canvas size, and Safari silently declined to draw it. Changed the chart to downsample to the visible pixel width and cap canvas size on high-density screens. The chart now renders in Safari on the MacBooks with no visible loss of detail.",
+    "tags": [
+     "safari",
+     "canvas-limit",
+     "high-dpi"
+    ],
+    "created_at": "2025-02-27",
+    "family": "render-f07",
+    "related_group": "render-g05",
+    "challenge": "negation_or_opposite",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2323",
+    "category": "render",
+    "subject": "Bar chart is a grey box after calculated fields were tidied",
+    "description": "After an analyst cleaned up old calculated fields, the 'basket size by region' bar chart shows only a grey box with no axes or bars.",
+    "resolution_notes": "The widget still referenced a calculated field that had been deleted, and the chart received an undefined measure that it silently failed to draw. Widgets now show 'This field no longer exists' with a link to edit, and the analyst re-pointed the chart to the replacement field. The chart drew correctly afterwards.",
+    "tags": [
+     "bar-chart",
+     "calculated-field",
+     "broken-reference"
+    ],
+    "created_at": "2025-04-17",
+    "family": "render-f01",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2407",
+    "category": "render",
+    "subject": "Store map has pins but no streets or borders",
+    "description": "The store map shows pins floating on a plain grey background with no streets, coastlines or borders.",
+    "resolution_notes": "After a configuration move the app still requested background tiles from an outdated tile service address, and every request returned 404. Updated the tile address and added a fallback base map. The street map background now loads behind the pins.",
+    "tags": [
+     "map-tiles",
+     "base-map",
+     "store-map"
+    ],
+    "created_at": "2025-12-23",
+    "family": "render-f10",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Not a customer network issue; the tile address in our own configuration was wrong, so render rather than connectivity."
+   },
+   {
+    "ticket_id": "T-2408",
+    "category": "render",
+    "subject": "Transaction scatter plot empty in Safari",
+    "description": "The basket-value scatter plot, which plots every transaction for the month, is empty in Safari. Chrome draws it, though slowly.",
+    "resolution_notes": "Scatter plots were not covered by the existing canvas size cap, so on Retina screens their canvas exceeded Safari's limit and was never drawn. Extended the cap to scatter plots and switched those above 50,000 points to density rendering. The plot now renders in Safari and loads faster in Chrome.",
+    "tags": [
+     "safari",
+     "scatter-plot",
+     "canvas-limit"
+    ],
+    "created_at": "2026-01-15",
+    "family": "render-f07",
+    "related_group": "render-g05",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2417",
+    "category": "render",
+    "subject": "Long-range trend charts blank on area managers' iPads",
+    "description": "Area managers on iPads see empty spaces where the long-range trend charts should be. On their desktops the same dashboards look fine.",
+    "resolution_notes": "The iPad browser has a lower canvas memory ceiling, and the trend charts at full Retina resolution exceeded it, so drawing failed without any error. Extended the downsampling and canvas size cap to these trend charts. The charts now display on the area managers' iPads.",
+    "tags": [
+     "ipad",
+     "canvas-memory",
+     "trend-chart"
+    ],
+    "created_at": "2025-08-21",
+    "family": "render-f07",
+    "related_group": "render-g05",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2611",
+    "category": "render",
+    "subject": "Weeks appear to start on Sunday for an analyst abroad",
+    "description": "An analyst working from Vancouver sees the weekly sales bars labelled as weeks starting on Sunday, while the team in Germany sees the same weeks starting on Monday.",
+    "resolution_notes": "Weeks were bucketed correctly in the workspace's Berlin time zone, but the chart formatted each bucket start in the analyst's browser zone, where Monday 00:00 in Berlin is still Sunday. As a workaround the analyst set their profile time zone to Berlin, which the chart uses in place of the browser zone; labelling axes in the workspace zone for everyone was tracked as the permanent fix. The analyst's weekly bars now start on Monday.",
+    "tags": [
+     "time-axis",
+     "weekly-chart",
+     "browser-timezone"
+    ],
+    "created_at": "2025-02-13",
+    "family": "render-f09",
+    "related_group": "render-g06",
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": "Weekly totals were correct; only the labels shifted, so render rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2730",
+    "category": "render",
+    "subject": "Clicking a region doesn't filter the other widgets",
+    "description": "Cross-filtering stopped working on the regional dashboard: clicking a region in the bar chart highlights it, but the table and map next to it stay unchanged.",
+    "resolution_notes": "The table and map had been switched to a different dataset whose region field was not linked to the bar chart's, and cross-filters only pass between widgets sharing a field reference. Linked the two region fields in the dashboard's filter mapping. Clicking a region now filters the table and the map.",
+    "tags": [
+     "cross-filter",
+     "field-mapping",
+     "regional-dashboard"
+    ],
+    "created_at": "2025-05-08",
+    "family": "render-f03",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2789",
+    "category": "render",
+    "subject": "Closed public holidays drawn as drops to zero",
+    "description": "Stores closed on public holidays show sharp dips to zero on the daily trend line, which the regional director keeps reading as a sales collapse. They want closed days skipped.",
+    "resolution_notes": "Line charts filled missing dates with zero by default, which is misleading for days when stores are shut. Added a 'Gaps for missing dates' option and turned it on for the customer's trend charts. Holidays now appear as breaks in the line rather than drops.",
+    "tags": [
+     "time-axis",
+     "missing-dates",
+     "line-chart"
+    ],
+    "created_at": "2026-07-23",
+    "family": "render-f09",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "No values were wrong; the chart's default drawing of missing dates was the issue, so render rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2809",
+    "category": "render",
+    "subject": "Embedded dashboard cut off with no scrollbar",
+    "description": "The customer embedded the store performance dashboard on an intranet page. Only the top third is visible and the frame has no scrollbar.",
+    "resolution_notes": "The intranet page set a fixed 600-pixel frame height, and our embed did not report its content height. Enabled the auto-resize option, which posts the content height to the host page, and gave the customer the two-line script for their intranet. The frame now grows to show the whole dashboard.",
+    "tags": [
+     "embedded-dashboard",
+     "iframe-height",
+     "auto-resize"
+    ],
+    "created_at": "2025-03-06",
+    "family": "render-f08",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "The embed is signed in correctly; the problem is how its content is sized in the frame, so render rather than auth."
+   }
+  ],
+  "sync": [
+   {
+    "ticket_id": "T-2148",
+    "category": "sync",
+    "subject": "Loyalty tier stops updating; warning cites unknown column",
+    "description": "Every CRM sync now ends 'Completed with warnings', and customer records no longer update their loyalty tier. The warning text mentions an unknown column.",
+    "resolution_notes": "A CRM admin deleted the loyalty_tier field and recreated it with the same label but a different internal name, which broke the existing mapping. Mapped the new internal name and made mapping errors appear on the connector page instead of only as a log warning. Loyalty tiers updated on the next sync for all 12,600 customers.",
+    "tags": [
+     "schema-change",
+     "field-mapping",
+     "loyalty-tier"
+    ],
+    "created_at": "2026-02-24",
+    "family": "sync-f06",
+    "related_group": "sync-g04",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2204",
+    "category": "sync",
+    "subject": "Belgian stores' revenue imported a hundred times too high",
+    "description": "After each weekly file drop, sales for the customer's Belgian stores look one hundred times larger than reality. Files from other countries import correctly.",
+    "resolution_notes": "The Belgian team's spreadsheet tool writes decimal commas, and the importer stripped the comma as a thousands separator, turning 1234,50 into 123450. Configured that team's feed for comma decimals and semicolon separators and reprocessed the last eight weekly files. Belgian revenue now matches the stores' till reports.",
+    "tags": [
+     "file-ingestion",
+     "decimal-comma",
+     "regional-settings"
+    ],
+    "created_at": "2025-09-23",
+    "family": "sync-f07",
+    "related_group": "sync-g05",
+    "challenge": null,
+    "classification_rationale": "The amounts looked wrong, but they were mis-parsed while the file was being ingested, so sync rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2308",
+    "category": "sync",
+    "subject": "Channel blank for every order since last weekend",
+    "description": "Orders synced since last weekend have an empty channel value, so the channel breakdown on the sales dashboard lumps them under 'Unknown'. Older orders are fine.",
+    "resolution_notes": "The customer replaced the custom order attribute 'sales_channel' with a new one called 'order_channel' in their e-commerce admin, and the connector mapping still pointed at the old attribute, which now returns nothing. Re-mapped to the new attribute and re-synced orders since the change. The channel breakdown shows no 'Unknown' orders for the period.",
+    "tags": [
+     "schema-change",
+     "custom-attribute",
+     "order-channel"
+    ],
+    "created_at": "2025-08-12",
+    "family": "sync-f06",
+    "related_group": "sync-g04",
+    "challenge": null,
+    "classification_rationale": "Values looked wrong ('Unknown'), but they were never ingested because the source field changed, so sync rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2319",
+    "category": "sync",
+    "subject": "New lead source value dropped during sync",
+    "description": "The customer added a lead source value 'Pop-up Store' in their CRM. Leads with that source appear in the dashboard with no source at all.",
+    "resolution_notes": "The connector validated picklist values against a list cached when the connection was created and silently cleared values it didn't recognize. Changed it to refresh picklist definitions on every run and to keep unrecognized values. Re-synced the affected leads, and 'Pop-up Store' now shows 148 leads in the source chart.",
+    "tags": [
+     "schema-change",
+     "picklist",
+     "lead-source"
+    ],
+    "created_at": "2026-08-25",
+    "family": "sync-f06",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Shows up as empty values, but the value was dropped during ingestion, so sync rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2330",
+    "category": "sync",
+    "subject": "Live dashboard missed orders during flash sale",
+    "description": "During a two-hour flash sale, the live dashboard missed about 8% of orders until the nightly sync filled the gap.",
+    "resolution_notes": "Our event intake endpoint returned errors when its processing queue was full, and the platform gave up on those events after three attempts. Increased intake capacity and changed the endpoint to accept and queue events before processing them. During the next flash sale every order appeared on the live dashboard.",
+    "tags": [
+     "inbound-webhooks",
+     "flash-sale",
+     "event-intake"
+    ],
+    "created_at": "2026-08-11",
+    "family": "sync-f14",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "High load is involved, but the result was lost ingestion of source events, so sync rather than perf."
+   },
+   {
+    "ticket_id": "T-2462",
+    "category": "sync",
+    "subject": "Sync fails: mapped field 'sales_region' not found",
+    "description": "The CRM sync has failed on every run since Tuesday with 'Mapped field sales_region does not exist on object Account'.",
+    "resolution_notes": "The customer's CRM admin renamed the custom field to sales_territory, and our field mapping still referenced the old API name. Updated the mapping to the new field and backfilled the last week. The sync completed and region filters on the account dashboard show values again.",
+    "tags": [
+     "schema-change",
+     "field-mapping",
+     "crm-connector"
+    ],
+    "created_at": "2025-03-11",
+    "family": "sync-f06",
+    "related_group": "sync-g04",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2649",
+    "category": "sync",
+    "subject": "Busiest stores' orders cut off partway through the day",
+    "description": "For the two busiest stores, orders in the dashboard stop partway through each day, while smaller stores are complete. Every run reports success.",
+    "resolution_notes": "The e-commerce API's page tokens expire after five minutes, and pages for the large stores took longer than that to process, so the next request returned an empty page that the connector read as the end. Changed the connector to fetch all pages before processing and to fail loudly on an expired token. Re-synced both stores, and daily order counts now match the platform.",
+    "tags": [
+     "pagination",
+     "page-token",
+     "silent-truncation"
+    ],
+    "created_at": "2025-06-10",
+    "family": "sync-f05",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2808",
+    "category": "sync",
+    "subject": "Older orders show 'Unknown customer' after onboarding",
+    "description": "Five years of orders loaded during onboarding, but every order older than two years shows 'Unknown customer'.",
+    "resolution_notes": "The customer backfill kept the default 24-month window while the order backfill used five years, so older orders referenced customers that were never imported. Aligned the customer backfill with the orders and reloaded customers back to the earliest order. 'Unknown customer' rows dropped from 41,000 to zero.",
+    "tags": [
+     "initial-backfill",
+     "related-records",
+     "customer-records"
+    ],
+    "created_at": "2026-02-03",
+    "family": "sync-f13",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Looks like a mapping error, but the related customer records were never ingested, so sync rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2912",
+    "category": "sync",
+    "subject": "Sync silently paused for two weeks",
+    "description": "The customer only noticed stale data when a regional director asked why last week's numbers looked flat. The connector page reads 'Paused after 5 consecutive failures'.",
+    "resolution_notes": "A brief source outage caused five failed runs and the connection paused itself; the failure emails went to an admin who had left the company. Resumed the schedule and backfilled the two weeks, and the admin changed the notification recipient to a shared operations address. Data is current, and a test failure notice reached the shared address.",
+    "tags": [
+     "auto-pause",
+     "sync-schedule",
+     "notification-recipient"
+    ],
+    "created_at": "2025-06-03",
+    "family": "sync-f10",
+    "related_group": "sync-g07",
+    "challenge": null,
+    "classification_rationale": "Notification emails are involved, but the issue is a paused ingestion schedule, so sync rather than alerts."
+   },
+   {
+    "ticket_id": "T-2913",
+    "category": "sync",
+    "subject": "Late-arriving POS transactions missing for days",
+    "description": "Transactions from stores with unreliable internet are missing from the dashboard even days later. Those registers upload their transactions in batches once the connection returns.",
+    "resolution_notes": "The connector's cursor used the transaction time, and offline registers uploaded transactions timed before the cursor, so they were skipped. Switched the cursor to the POS platform's 'received at' timestamp. The past two weeks of missing transactions were backfilled and new offline batches now appear on the next sync.",
+    "tags": [
+     "incremental-sync",
+     "offline-registers",
+     "cursor"
+    ],
+    "created_at": "2025-08-05",
+    "family": "sync-f04",
+    "related_group": null,
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "Store network outages are mentioned, but the problem is our ingestion cursor skipping late records, not network reachability, so sync rather than connectivity."
+   },
+   {
+    "ticket_id": "T-2926",
+    "category": "sync",
+    "subject": "Only the reconnecting rep's own accounts sync",
+    "description": "After the customer reconnected the CRM integration, only accounts owned by the person who reconnected it are imported, about 5% of the usual volume.",
+    "resolution_notes": "The connection had been re-authorized with a sales rep's personal login, whose CRM visibility is limited to their own records. Re-authorized with the dedicated integration user, which can read all accounts. Account volume returned to the usual 23,000 on the next run.",
+    "tags": [
+     "integration-user",
+     "reauthorization",
+     "record-visibility"
+    ],
+    "created_at": "2026-10-27",
+    "family": "sync-f11",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   }
+  ],
+  "workspace_admin": [
+   {
+    "ticket_id": "T-2062",
+    "category": "workspace_admin",
+    "subject": "One director sees revenue in the wrong currency",
+    "description": "A sales director reports dashboard revenue in GBP while everyone else sees EUR, and suspects the conversion is broken.",
+    "resolution_notes": "The director had a personal display currency of GBP, which overrides the workspace reporting currency. Reset it to 'Workspace currency' at the director's request. The director now sees EUR, matching colleagues.",
+    "tags": [
+     "user-overrides",
+     "display-currency",
+     "reporting-currency"
+    ],
+    "created_at": "2026-08-05",
+    "family": "workspace_admin-f12",
+    "related_group": "workspace_admin-g02",
+    "challenge": "same_symptom_different_cause",
+    "classification_rationale": "Values were converted correctly; a personal display-currency preference overrode the workspace default, so this is workspace_admin rather than data_quality."
+   },
+   {
+    "ticket_id": "T-2063",
+    "category": "workspace_admin",
+    "subject": "Custom domain 'not working' for most staff",
+    "description": "The customer says their custom domain is broken because only admins get branded links, while everyone else still gets default-domain links.",
+    "resolution_notes": "DNS and certificate checks were healthy. The custom domain was still in 'Preview for admins' rollout mode, which limits branded links to admins during testing. Switched the rollout to 'All members', and non-admin users now receive branded links.",
+    "tags": [
+     "custom-domain",
+     "rollout-mode",
+     "admin-preview"
+    ],
+    "created_at": "2025-01-14",
+    "family": "workspace_admin-f03",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "The domain resolved and served a valid certificate; a display rollout setting limited it, so this is workspace_admin rather than connectivity."
+   },
+   {
+    "ticket_id": "T-2172",
+    "category": "workspace_admin",
+    "subject": "Five new European workspaces created in English (US) format",
+    "description": "The customer created five European regional workspaces from their template, and all of them came up with US dates, US number format and English.",
+    "resolution_notes": "The template copies its settings into each new workspace and still held English (US) locale defaults. Updated each regional workspace's locale and corrected the template so future workspaces start with region-appropriate defaults. The five workspaces now use their local formats.",
+    "tags": [
+     "workspace-template",
+     "settings-inheritance",
+     "locale"
+    ],
+    "created_at": "2025-08-13",
+    "family": "workspace_admin-f12",
+    "related_group": "workspace_admin-g07",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2206",
+    "category": "workspace_admin",
+    "subject": "Scheduled PDFs use month-first dates while the app shows day-first",
+    "description": "A UK admin sees day-first dates in the app, but the scheduled PDFs the team receives show month-first dates, such as 03/04/2026 for 4 March.",
+    "resolution_notes": "The admin had a personal DD/MM/YYYY preference, but scheduled PDFs are not tied to a single viewer and use the workspace default, which was MM/DD/YYYY. Changed the workspace default date format to DD/MM/YYYY. The next scheduled PDF used day-first dates.",
+    "tags": [
+     "date-format",
+     "scheduled-pdf",
+     "workspace-default"
+    ],
+    "created_at": "2026-03-09",
+    "family": "workspace_admin-f06",
+    "related_group": null,
+    "challenge": "related_symptom_different_product",
+    "classification_rationale": "The PDF was generated and delivered; it followed the workspace default date format, so the fix was a setting rather than an export issue."
+   },
+   {
+    "ticket_id": "T-2248",
+    "category": "workspace_admin",
+    "subject": "Canadian business wants figures in CAD, not USD",
+    "description": "All of the customer's dashboards show USD, but their Canadian leadership team reports in CAD.",
+    "resolution_notes": "The workspace reporting currency was USD, chosen during onboarding. Changed it to CAD, and the background recompute reconverted history at transaction-date rates. Dashboards now show CAD totals that match the finance team's CAD reports.",
+    "tags": [
+     "reporting-currency",
+     "cad",
+     "workspace-settings"
+    ],
+    "created_at": "2025-03-05",
+    "family": "workspace_admin-f10",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": "Conversion was mathematically correct; only the chosen reporting currency was wrong, which is a workspace setting."
+   },
+   {
+    "ticket_id": "T-2298",
+    "category": "workspace_admin",
+    "subject": "Subscription email buttons go to the generic product address",
+    "description": "Customer's admin noticed that the 'Open dashboard' buttons in subscription emails point to the generic product address rather than their branded domain.",
+    "resolution_notes": "Email buttons are built with the workspace's link domain, which was still the default because the custom-domain link setting was off. Enabled it, and the buttons in the next subscription email used the branded domain.",
+    "tags": [
+     "custom-domain",
+     "email-buttons",
+     "link-domain"
+    ],
+    "created_at": "2026-06-24",
+    "family": "workspace_admin-f03",
+    "related_group": "workspace_admin-g05",
+    "challenge": null,
+    "classification_rationale": "The emails were delivered correctly; only the link-domain setting was wrong, so this is workspace_admin rather than export."
+   },
+   {
+    "ticket_id": "T-2338",
+    "category": "workspace_admin",
+    "subject": "Old workspace name still shown after rebrand",
+    "description": "The customer renamed their workspace from 'Granite Retail' to 'Granite Peak Outdoor', but a day later some users still see the old name in the browser tab and the workspace switcher.",
+    "resolution_notes": "The workspace display name was cached in each user's session profile and only refreshed at the next sign-in. As an immediate workaround we triggered a workspace metadata refresh for active sessions; a permanent change to read the name live instead of from the cached profile is scheduled. All users saw the new name after the refresh.",
+    "tags": [
+     "workspace-name",
+     "rebrand",
+     "cached-profile"
+    ],
+    "created_at": "2025-02-03",
+    "family": "workspace_admin-f01",
+    "related_group": null,
+    "challenge": "workaround_vs_permanent_fix",
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2344",
+    "category": "workspace_admin",
+    "subject": "Stores in one region need a Friday-Saturday weekend",
+    "description": "The customer's stores in one region observe a Friday-Saturday weekend, but working-day metrics treat Saturday and Sunday as the weekend.",
+    "resolution_notes": "Weekend days are defined per business calendar, and the region used the default Saturday-Sunday calendar. Created a calendar with a Friday-Saturday weekend and assigned it to that store group. Working-day counts for those stores now exclude Fridays and Saturdays.",
+    "tags": [
+     "business-calendar",
+     "weekend-days",
+     "store-groups"
+    ],
+    "created_at": "2026-01-14",
+    "family": "workspace_admin-f14",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2414",
+    "category": "workspace_admin",
+    "subject": "Date format update reaches new users but not long-standing ones",
+    "description": "New users see the new DD/MM/YYYY format, but users who joined before last year still see MM/DD/YYYY.",
+    "resolution_notes": "Users created before the profile redesign had been given an explicit personal date format copied from the old default, and that copy now overrides the workspace setting. Cleared the copied personal value so those users inherit the workspace default. All users show DD/MM/YYYY.",
+    "tags": [
+     "user-overrides",
+     "date-format",
+     "legacy-profiles"
+    ],
+    "created_at": "2026-05-20",
+    "family": "workspace_admin-f12",
+    "related_group": "workspace_admin-g02",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2573",
+    "category": "workspace_admin",
+    "subject": "Some users still see English after switching the workspace to French",
+    "description": "The admin set the workspace language to French, but about a dozen users still get the English interface.",
+    "resolution_notes": "Those users had set their personal language to English at some point, and personal preferences take precedence over the workspace default. Showed the admin the 'Members with overrides' report and, after checking with the users, reset their language to 'Workspace default'. All of them now see French.",
+    "tags": [
+     "user-overrides",
+     "language",
+     "workspace-defaults"
+    ],
+    "created_at": "2025-04-02",
+    "family": "workspace_admin-f12",
+    "related_group": "workspace_admin-g02",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2824",
+    "category": "workspace_admin",
+    "subject": "Number format change ignored for part of the finance team",
+    "description": "After the workspace switched to German number format, three finance analysts still see 1,234.56.",
+    "resolution_notes": "The analysts had personal number-format preferences left over from an earlier trial, which override the workspace setting. Reset their number format to 'Workspace default'. They now see 1.234,56.",
+    "tags": [
+     "user-overrides",
+     "number-format",
+     "finance-team"
+    ],
+    "created_at": "2025-11-26",
+    "family": "workspace_admin-f12",
+    "related_group": "workspace_admin-g02",
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2928",
+    "category": "workspace_admin",
+    "subject": "Admins keep scheduling reports at the wrong hour",
+    "description": "Admins pick 8:00 for report schedules, but recipients get the reports at 3:00 or 4:00 in the morning local time.",
+    "resolution_notes": "Schedule times are interpreted in the workspace time zone, which was still the UTC default because it was never set during setup. Set the workspace time zone to America/New_York and adjusted the existing schedules. Reports now arrive at 8:00 local time.",
+    "tags": [
+     "timezone",
+     "schedules",
+     "utc-default"
+    ],
+    "created_at": "2025-06-16",
+    "family": "workspace_admin-f07",
+    "related_group": "workspace_admin-g01",
+    "challenge": null,
+    "classification_rationale": "Report delivery worked as configured; the wrong hour came from the workspace time-zone preference, so this is workspace_admin rather than export."
+   },
+   {
+    "ticket_id": "T-2960",
+    "category": "workspace_admin",
+    "subject": "Old company name in report footers despite new workspace name",
+    "description": "The customer changed the workspace name months ago, but the footer of every PDF report still reads 'Juniper Hardware Ltd' instead of their new trading name.",
+    "resolution_notes": "Report footers use the separate 'Organisation legal name' field, not the workspace display name, and only the display name had been updated. Updated the legal name field to the newly registered name. The next scheduled PDF carried the correct footer.",
+    "tags": [
+     "legal-name",
+     "report-footer",
+     "organization-profile"
+    ],
+    "created_at": "2025-10-13",
+    "family": "workspace_admin-f01",
+    "related_group": null,
+    "challenge": "similar_wording_different_problem",
+    "classification_rationale": "The PDF was generated and delivered correctly; the old name came from the organisation legal-name setting, so this is workspace_admin rather than export."
+   }
+  ],
+  "near_duplicate_pair": [
+   {
+    "ticket_id": "T-2378",
+    "category": "workspace_admin",
+    "subject": "German finance team wants decimal commas",
+    "description": "Finance users in the Hamburg office misread 1,234.56 and asked for numbers to appear as 1.234,56.",
+    "resolution_notes": "The workspace number format was English (US). Set the number format to German (1.234,56) for the workspace. Dashboards and tables now show German separators.",
+    "tags": [
+     "number-format",
+     "decimal-separator",
+     "locale"
+    ],
+    "created_at": "2025-01-22",
+    "family": "workspace_admin-f05",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   },
+   {
+    "ticket_id": "T-2438",
+    "category": "workspace_admin",
+    "subject": "Finance wants negative numbers in parentheses",
+    "description": "The finance team asked for negative variances to appear as (1,234) instead of -1,234 in all tables.",
+    "resolution_notes": "Negative number style is a workspace setting and was at the default minus sign. Switched it to accounting style. Variance tables now show negatives in parentheses.",
+    "tags": [
+     "number-format",
+     "negative-numbers",
+     "accounting-style"
+    ],
+    "created_at": "2026-04-01",
+    "family": "workspace_admin-f05",
+    "related_group": null,
+    "challenge": null,
+    "classification_rationale": null
+   }
+  ]
+ }
+}

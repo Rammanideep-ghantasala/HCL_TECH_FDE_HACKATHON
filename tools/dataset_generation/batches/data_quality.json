@@ -1,0 +1,1680 @@
+{
+ "category": "data_quality",
+ "issue_families": [
+  {
+   "family_id": "data_quality-f01",
+   "name": "Currency conversion errors",
+   "summary": "Amounts are converted to the reporting currency with the wrong rate date, an inverted rate, a second conversion of already-converted amounts, or a defaulted source currency. Symptoms are closed periods that drift between runs or revenue off by an FX-sized factor.",
+   "boundary_note": "Orders were ingested completely and on time; the error is in the conversion maths applied afterwards, so it is not sync. Choosing which reporting currency to show is workspace_admin."
+  },
+  {
+   "family_id": "data_quality-f02",
+   "name": "Time-zone bucketing of transactions",
+   "summary": "Transactions land in the wrong day or hour because aggregates use UTC boundaries, a wrongly mapped store zone, naive timestamps read as UTC or DST-unaware hour labels. Symptoms are evening sales on the next day, shifted hourly peaks and month-end mismatches.",
+   "boundary_note": "All rows are present (a sync window gap that loses rows is sync) and the chart faithfully draws the stored aggregates (not render). A workspace time-zone preference left at the wrong value is workspace_admin."
+  },
+  {
+   "family_id": "data_quality-f03",
+   "name": "Source field mapping to metrics",
+   "summary": "A correctly ingested source field feeds the wrong metric: gross order total as net revenue, line count as units, discount as tax, session id as customer id, or VAT-inclusive prices read as net. Symptoms are systematically inflated or deflated KPIs.",
+   "boundary_note": "The connector delivered every field; the defect is which field feeds which metric, not a failed or partial sync."
+  },
+  {
+   "family_id": "data_quality-f04",
+   "name": "Dimension and category mapping",
+   "summary": "Lookup tables and rule-based mappings for categories, regions, channels and product hierarchies misassign records through missing prefixes, name collisions, rule ordering or non-effective-dated changes. Symptoms are growing 'Uncategorized' buckets, rewritten regional history or merged categories.",
+   "boundary_note": "Records are classified incorrectly after ingestion; who can see a dimension is perm, and how a correct grouping is drawn on screen is render."
+  },
+  {
+   "family_id": "data_quality-f05",
+   "name": "Deduplication and identity resolution logic",
+   "summary": "Matching rules used to count distinct customers or transactions are too aggressive (placeholder emails, same amount and timestamp) or too lax (case-sensitive email, shipments counted as orders). Symptoms are under- or over-counted customers and orders.",
+   "boundary_note": "Each record was ingested exactly once; rows inserted twice by a re-sync are sync, whereas this family covers the matching and counting logic applied afterwards."
+  },
+  {
+   "family_id": "data_quality-f06",
+   "name": "Ratio and distinct-count aggregation",
+   "summary": "Rollups average pre-computed ratios, add up non-additive distinct counts, approximate medians or use an incomplete denominator. Symptoms are KPIs that change with drill level or exceed plausible ranges.",
+   "boundary_note": "Inputs are correct and the chart plots what it receives; the defect is in aggregation maths, so it is neither render nor perf."
+  },
+  {
+   "family_id": "data_quality-f07",
+   "name": "Rounding and numeric precision",
+   "summary": "Line-level rounding, truncation, binary floating-point sums, a different rounding mode and truncated FX rate precision create cent-level or proportional differences against finance systems.",
+   "boundary_note": "The computed values themselves are off and reconcile wrongly through every surface; rounding only a displayed label is render, and number display preferences are workspace_admin."
+  },
+  {
+   "family_id": "data_quality-f08",
+   "name": "Units and scale interpretation",
+   "summary": "Values are read in the wrong unit: minor versus major currency units, zero-decimal currencies, cases versus single units, grams versus kilograms. Symptoms are figures off by exact factors such as 100, 12 or 1000, or impossible negatives.",
+   "boundary_note": "Values arrived intact and nothing failed to load; their unit interpretation is wrong, so this is not sync."
+  },
+  {
+   "family_id": "data_quality-f09",
+   "name": "Refunds, returns and revenue netting",
+   "summary": "Net revenue logic double-subtracts partial refunds, attributes returns to an unexpected date, treats exchanges as refunds, ignores some refund methods or counts gift card value twice.",
+   "boundary_note": "These are metric-definition and netting errors on correctly ingested transactions; an export using a different filter default than the dashboard is export."
+  },
+  {
+   "family_id": "data_quality-f10",
+   "name": "Calculated fields and null handling",
+   "summary": "Custom metric formulas evaluate incorrectly: nulls coerced to zero, divide-by-zero returning 0, integer division, parentheses lost in a formula migration, or stale references after a metric rename.",
+   "boundary_note": "The formula engine produces wrong numbers from correct inputs; permission to edit calculated fields is perm."
+  },
+  {
+   "family_id": "data_quality-f11",
+   "name": "Period comparison alignment",
+   "summary": "Year-over-year, like-for-like and to-date comparisons pair the wrong periods: calendar date instead of fiscal weekday, leap-day shifts, partial versus full periods, or wrong comparable-store eligibility.",
+   "boundary_note": "Calendar settings were configured correctly and the comparison engine applied them wrongly; a fiscal calendar left unset is workspace_admin."
+  },
+  {
+   "family_id": "data_quality-f12",
+   "name": "Semi-additive measures",
+   "summary": "Snapshot measures such as stock on hand, active members and balances are summed across time, taken at the wrong point in the period or rolled up at the wrong grain. Symptoms are values that scale with the length of the date range.",
+   "boundary_note": "Snapshots were ingested correctly; the time-aggregation rule is wrong, so this is not sync or render."
+  },
+  {
+   "family_id": "data_quality-f13",
+   "name": "Join fan-out and double counting",
+   "summary": "One-to-many joins (orders to promotion codes, customers to addresses, order-level fees to line items, monthly targets to daily rows) multiply measures.",
+   "boundary_note": "Storage holds no duplicate rows, so it is not sync; the duplication happens in the query model that joins tables."
+  },
+  {
+   "family_id": "data_quality-f14",
+   "name": "Text normalisation and key matching",
+   "summary": "Keys and labels are altered or compared inconsistently: trailing spaces, letter case, Unicode forms, leading zeros stripped by type inference, identifiers mangled into scientific notation. Symptoms are split groups and 'Unknown product' rows.",
+   "boundary_note": "Files and records loaded successfully; values were normalised or typed incorrectly, which breaks joins and grouping after ingestion."
+  }
+ ],
+ "related_groups": [
+  {
+   "group_id": "data_quality-g01",
+   "family_id": "data_quality-f01",
+   "shared_root_cause": "Currency conversion looked up the exchange rate for the report run date instead of each order's transaction date, so historical periods were re-priced at current rates."
+  },
+  {
+   "group_id": "data_quality-g02",
+   "family_id": "data_quality-f02",
+   "shared_root_cause": "Daily and hourly aggregates were bucketed on UTC boundaries instead of each store's configured local time zone."
+  },
+  {
+   "group_id": "data_quality-g03",
+   "family_id": "data_quality-f05",
+   "shared_root_cause": "Identity resolution matched on email alone, so in-store shoppers recorded with a shared placeholder email were merged into one profile."
+  },
+  {
+   "group_id": "data_quality-g04",
+   "family_id": "data_quality-f06",
+   "shared_root_cause": "Average order value rollups averaged lower-level averages instead of recomputing total revenue over total orders."
+  },
+  {
+   "group_id": "data_quality-g05",
+   "family_id": "data_quality-f08",
+   "shared_root_cause": "Sources delivering amounts in minor units (cents) were configured with the major-unit amount format, inflating values 100 times."
+  },
+  {
+   "group_id": "data_quality-g06",
+   "family_id": "data_quality-f12",
+   "shared_root_cause": "Stock-on-hand snapshots were summed across the days of the period instead of taking the period-end value."
+  },
+  {
+   "group_id": "data_quality-g07",
+   "family_id": "data_quality-f13",
+   "shared_root_cause": "Orders were joined one-to-many to their promotion codes, so orders with stacked codes contributed their revenue more than once."
+  },
+  {
+   "group_id": "data_quality-g08",
+   "family_id": "data_quality-f09",
+   "shared_root_cause": "Partial refunds were deducted twice: once through the source's adjusted order total and again through the separate refund record."
+  },
+  {
+   "group_id": "data_quality-g09",
+   "family_id": "data_quality-f14",
+   "shared_root_cause": "Store rows were grouped or counted on raw text labels whose case and whitespace differed between sources, instead of on the store ID."
+  },
+  {
+   "group_id": "data_quality-g10",
+   "family_id": "data_quality-f14",
+   "shared_root_cause": "The file importer inferred identifier columns as numeric and stripped their leading zeros, breaking lookups."
+  },
+  {
+   "group_id": "data_quality-g11",
+   "family_id": "data_quality-f03",
+   "shared_root_cause": "The storefront order total, which includes tax and shipping, was mapped to the net revenue metric instead of the merchandise subtotal."
+  },
+  {
+   "group_id": "data_quality-g12",
+   "family_id": "data_quality-f04",
+   "shared_root_cause": "Under first-match rule evaluation, newly added specific mapping rules were appended below an older catch-all rule and never fired."
+  },
+  {
+   "group_id": "data_quality-g13",
+   "family_id": "data_quality-f10",
+   "shared_root_cause": "The migration of calculated fields to the new formula engine dropped parentheses from saved expressions, changing operator precedence."
+  },
+  {
+   "group_id": "data_quality-g14",
+   "family_id": "data_quality-f07",
+   "shared_root_cause": "Currency aggregates were summed with binary floating-point arithmetic instead of fixed-point decimals, occasionally tipping the final rounding by a cent."
+  },
+  {
+   "group_id": "data_quality-g15",
+   "family_id": "data_quality-f11",
+   "shared_root_cause": "To-date comparisons used the whole prior period as the base instead of the same number of elapsed days."
+  }
+ ],
+ "tickets": [
+  {
+   "key": "data_quality-001",
+   "family_id": "data_quality-f01",
+   "related_group": "data_quality-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Closed-quarter EUR revenue changes every week",
+   "description": "The customer's finance lead says Q2 revenue converted to EUR in the Finance pack shows a different total each Monday, although no Q2 orders have been added or edited since July.",
+   "resolution_notes": "The conversion step looked up the exchange rate for the report run date instead of each order's transaction date, so a closed quarter was silently re-priced at the latest rate. Switched conversion to transaction-date rates and recomputed the workspace's historical aggregates. The Q2 EUR total stayed identical across three consecutive weekly runs and matched the finance ledger within 0.02 EUR.",
+   "tags": [
+    "currency-conversion",
+    "fx-rates",
+    "historical-revenue"
+   ],
+   "created_at": "2025-08-18",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-002",
+   "family_id": "data_quality-f01",
+   "related_group": "data_quality-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "March GBP figure in board deck no longer matches dashboard",
+   "description": "Per the customer: 'Our board deck quoted £1.84M for March, and the same Sales Overview tile now says £1.79M for March.' Nobody has changed any March orders.",
+   "resolution_notes": "USD orders were converted to GBP with today's rate on every query rather than the rate in effect on each order date, so an already reported month kept moving with the market. Applied transaction-date conversion and rebuilt the monthly aggregates. March returned to £1,841,302 and did not move after the next daily rate refresh.",
+   "tags": [
+    "currency-conversion",
+    "gbp",
+    "month-end"
+   ],
+   "created_at": "2025-05-06",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-003",
+   "family_id": "data_quality-f01",
+   "related_group": "data_quality-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Year-over-year growth for Canadian stores can't be reproduced",
+   "description": "Customer's analyst rebuilt CAD year-over-year growth from the raw order export and got 4.1%, while the Store Performance dashboard shows 7.8% for the same stores and dates.",
+   "resolution_notes": "Prior-year USD-priced orders were converted at the current CAD rate rather than the rates on their transaction dates, which shifted the comparison base. Corrected conversion to transaction-date rates for both periods and backfilled the aggregates. The dashboard now reports 4.1%, matching the analyst's independent calculation.",
+   "tags": [
+    "currency-conversion",
+    "year-over-year",
+    "cad"
+   ],
+   "created_at": "2026-02-10",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-004",
+   "family_id": "data_quality-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Australian store revenue more than doubled after enabling multi-currency",
+   "description": "Right after the customer switched on multi-currency reporting, revenue for their two Sydney stores jumped to roughly 2.3 times the POS totals while every US store looked normal.",
+   "resolution_notes": "The AUD row in the rate table was stored as AUD per USD, but the conversion treated it as USD per AUD, so amounts were multiplied by the inverse rate. Corrected the rate orientation, added a check that rejects rates whose orientation disagrees with the provider's base currency, and recomputed the affected days. Sydney revenue now matches the POS Z-reports to within a cent per day.",
+   "tags": [
+    "currency-conversion",
+    "aud",
+    "inverted-rate"
+   ],
+   "created_at": "2025-03-24",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-005",
+   "family_id": "data_quality-f01",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "The marketplace orders were ingested in full; the shortfall came from converting already-converted amounts, so this is data_quality rather than sync.",
+   "category": "data_quality",
+   "subject": "Marketplace channel revenue far below the settlement statement",
+   "description": "Customer reports monthly revenue from their Mexican marketplace channel is far lower than the marketplace's own settlement statement, by much more than fees could explain.",
+   "resolution_notes": "The marketplace connector delivered order amounts already converted to USD but kept the original currency code MXN on each order, so the platform converted them a second time and divided totals by roughly 17. Mapped the connector's settlement-currency field as the amount currency and reprocessed the channel's history. The October channel total now matches the settlement statement within 0.3%, the remainder being marketplace fees.",
+   "tags": [
+    "currency-conversion",
+    "double-conversion",
+    "marketplace"
+   ],
+   "created_at": "2025-11-12",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-006",
+   "family_id": "data_quality-f01",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "London store sales counted as dollars without conversion",
+   "description": "The customer's regional controller noticed the London flagship's sales enter the USD rollup at face value, so £10,000 of sales appears as $10,000.",
+   "resolution_notes": "Orders from that store arrived with an empty currency code, and the conversion step defaulted empty codes to the workspace reporting currency instead of the store's currency. As a workaround we added a per-store currency default (London = GBP) and recomputed 60 days of aggregates; a permanent fix that derives currency from the store record whenever the order field is blank is scheduled. The London store's July total now converts correctly against the controller's ledger.",
+   "tags": [
+    "currency-conversion",
+    "missing-currency-code",
+    "store-rollup"
+   ],
+   "created_at": "2026-07-29",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-007",
+   "family_id": "data_quality-f02",
+   "related_group": "data_quality-g02",
+   "challenge": null,
+   "classification_rationale": "Every transaction was present, so this is a bucketing error in aggregation rather than a sync gap.",
+   "category": "data_quality",
+   "subject": "Pacific stores' Sunday evening sales showing on Monday",
+   "description": "Regional manager says late Sunday transactions from the Pacific-time stores appear under Monday in the daily sales table, while the POS end-of-day report has them on Sunday.",
+   "resolution_notes": "Daily store aggregates were bucketed on UTC midnight rather than each store's configured local time zone, so anything rung up after 4-5 pm Pacific rolled into the next day. Rebuilt daily aggregates using per-store time zones and backfilled 90 days. Sunday totals for three sample stores now match their POS Z-reports exactly.",
+   "tags": [
+    "timezone",
+    "daily-buckets",
+    "store-sales"
+   ],
+   "created_at": "2025-02-17",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-008",
+   "family_id": "data_quality-f02",
+   "related_group": "data_quality-g02",
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Footfall heatmap peaks at 3 am for Singapore stores",
+   "description": "In the Store Traffic module, the hourly visitor heatmap for the Singapore stores puts the busiest hours in the middle of the night, eight hours away from what store staff see on the floor.",
+   "resolution_notes": "The traffic module shares the aggregation job that grouped hourly counter readings by UTC hour instead of the store's local zone (UTC+8). After moving the job to per-store time zones and reprocessing, the peak sits at 11:00-13:00 local time, matching the door counters' own hourly report.",
+   "tags": [
+    "timezone",
+    "store-traffic",
+    "hourly-heatmap"
+   ],
+   "created_at": "2025-09-04",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-009",
+   "family_id": "data_quality-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Phoenix store hourly sales off by one hour all summer",
+   "description": "Customer noticed the Phoenix store's hourly chart has been shifted one hour later since mid-March, while their Denver store looks correct.",
+   "resolution_notes": "The store's location record supplied the abbreviation 'MST', which our parser mapped to America/Denver (observes daylight saving) instead of America/Phoenix (does not). Changed the mapping to prefer the explicit zone from the store profile, set the store to America/Phoenix and re-bucketed data since March. Hourly totals now line up with the store's register logs.",
+   "tags": [
+    "timezone",
+    "dst",
+    "store-location"
+   ],
+   "created_at": "2025-07-14",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-010",
+   "family_id": "data_quality-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The values inside the bucket were wrong, not just the way the chart drew them, so this is data_quality rather than render.",
+   "category": "data_quality",
+   "subject": "Hourly sales double at 1 AM on the night clocks went back",
+   "description": "On the Hourly Sales chart for 2 November, the 1:00 bar is roughly twice its usual height for every US store, and store teams insist that hour was quiet.",
+   "resolution_notes": "Hourly aggregation keyed buckets by the local wall-clock label, so the two distinct 1:00-1:59 hours on the fall-back night were merged into one bucket. Changed hourly bucketing to UTC instants labelled with their local offset, which yields 25 buckets for that day, and reprocessed the date. The chart now shows separate 1:00 EDT and 1:00 EST entries, each matching register totals.",
+   "tags": [
+    "timezone",
+    "daylight-saving",
+    "hourly-aggregation"
+   ],
+   "created_at": "2025-11-04",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-011",
+   "family_id": "data_quality-f02",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Rows arrived complete; their timestamps were interpreted in the wrong zone after ingestion, which affects bucketing rather than sync completeness.",
+   "category": "data_quality",
+   "subject": "Web orders appear five hours earlier than they were placed",
+   "description": "The ecommerce team says orders placed at 9 pm Eastern show in the order timeline at 4 pm, and orders placed just after midnight count toward the previous day.",
+   "resolution_notes": "The storefront export sends order timestamps without a UTC offset, in store-local Eastern time, and the field was being interpreted as UTC. Set the connector's timestamp interpretation for that source to America/New_York and reprocessed six months of orders. Spot checks of 20 orders matched the storefront's order history to the minute.",
+   "tags": [
+    "timezone",
+    "naive-timestamps",
+    "ecommerce-orders"
+   ],
+   "created_at": "2026-01-20",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-012",
+   "family_id": "data_quality-f02",
+   "related_group": "data_quality-g02",
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "October revenue about 2% lower than the ERP",
+   "description": "Finance flagged that October revenue on the Executive Summary is around 2% below the ERP figure, and November is overstated by almost exactly the same amount.",
+   "resolution_notes": "Monthly totals were built from UTC-bucketed days, so evening sales on 31 October in the Americas stores were counted in November. After switching aggregation to each store's local business day and reprocessing, October matched the ERP to the dollar and November's overstatement disappeared.",
+   "tags": [
+    "timezone",
+    "month-end",
+    "revenue-reconciliation"
+   ],
+   "created_at": "2025-11-21",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-013",
+   "family_id": "data_quality-f03",
+   "related_group": "data_quality-g11",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Net sales tile higher than ERP net sales",
+   "description": "Customer's controller reports that 'Net sales' on the dashboard runs consistently above the ERP's net sales, by roughly the shipping and sales tax collected each week.",
+   "resolution_notes": "The storefront connector's default mapping fed the order 'total' field, which includes shipping and tax, into the net revenue metric. Remapped net revenue to the merchandise subtotal after discounts, moved shipping and tax to their own metrics and recomputed history. Weekly net sales now reconcile to the ERP within 0.1%.",
+   "tags": [
+    "field-mapping",
+    "net-revenue",
+    "tax-and-shipping"
+   ],
+   "created_at": "2025-04-08",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-014",
+   "family_id": "data_quality-f03",
+   "related_group": "data_quality-g11",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Online average basket value 9% above order-management report",
+   "description": "Store operations compared average basket value for online orders with their order-management report and found the dashboard figure about 9% higher every week, consistently across regions.",
+   "resolution_notes": "Average basket value is derived from net revenue, which was mapped to the order total including shipping fees and tax rather than the merchandise subtotal. Correcting the revenue mapping brought the metric in line; the last eight weeks now match the order-management report within 0.2%.",
+   "tags": [
+    "field-mapping",
+    "average-basket",
+    "online-orders"
+   ],
+   "created_at": "2026-03-03",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-015",
+   "family_id": "data_quality-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Units sold ignores multi-quantity purchases",
+   "description": "Customer noticed that when a shopper buys six of the same candle, units sold only goes up by one.",
+   "resolution_notes": "The units metric was mapped to the count of order lines instead of the line 'quantity' field, so multi-quantity lines counted once. Remapped units sold to the sum of quantity and reprocessed the last 13 months. A test order of six units now raises the metric by six, and monthly units match the inventory depletion report.",
+   "tags": [
+    "field-mapping",
+    "units-sold",
+    "quantity"
+   ],
+   "created_at": "2026-08-04",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-016",
+   "family_id": "data_quality-f03",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Returning-customer rate stuck near 0%",
+   "description": "Since connecting their new storefront, the customer's returning-customer rate has fallen below 1%, which they know is wrong because the loyalty program shows thousands of repeat buyers.",
+   "resolution_notes": "The customer identifier for the storefront source was mapped to the checkout session ID, which is unique per visit, so every order looked like a new customer. Remapped it to the storefront account ID, with email as fallback for guest checkouts, and recomputed customer metrics. The returning-customer rate settled at 31%, consistent with the loyalty program's repeat-purchase report.",
+   "tags": [
+    "field-mapping",
+    "customer-id",
+    "returning-customers"
+   ],
+   "created_at": "2026-05-12",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-017",
+   "family_id": "data_quality-f03",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Amounts were ingested correctly; VAT-inclusive prices were interpreted as net, which is a mapping issue rather than currency conversion.",
+   "category": "data_quality",
+   "subject": "EU store revenue overstated by roughly the VAT rate",
+   "description": "The customer's German and French stores show revenue about 19-20% above their statutory net sales reports, while the US stores reconcile.",
+   "resolution_notes": "Prices from the EU POS source are VAT-inclusive, but the source was configured with tax mode 'exclusive', so VAT was never removed from revenue. Switched the EU sources to tax-inclusive mode so VAT is split out per line and reprocessed since January. Net revenue for both countries now matches the statutory reports to the euro.",
+   "tags": [
+    "field-mapping",
+    "vat",
+    "tax-inclusive"
+   ],
+   "created_at": "2025-10-02",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-018",
+   "family_id": "data_quality-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Tax collected spikes during promotion weekends",
+   "description": "The finance team asked why 'Tax collected' nearly triples on promotional weekends when no tax rates have changed.",
+   "resolution_notes": "When the source added a separate promotions field, the order-level discount amount was mapped into the tax metric instead of the discount metric. Corrected the mapping so discounts and tax are separated and recomputed the affected periods. The Black Friday weekend tax figure now matches the tax filing worksheet.",
+   "tags": [
+    "field-mapping",
+    "tax",
+    "discounts"
+   ],
+   "created_at": "2025-12-03",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-019",
+   "family_id": "data_quality-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "'Uncategorized' share jumped after spring collection launch",
+   "description": "About 14% of revenue fell into 'Uncategorized' on the Merchandising dashboard within a week of the customer launching their spring collection.",
+   "resolution_notes": "Category assignment relied on a SKU-prefix lookup table, and the new collection used a prefix (SS26-) that was not in it. Switched the mapping to the category attribute supplied on each product record, keeping prefixes only as a fallback, and reclassified the affected products. The Uncategorized share dropped to 0.3%, all of it genuinely uncategorised gift cards.",
+   "tags": [
+    "category-mapping",
+    "sku-prefix",
+    "uncategorized"
+   ],
+   "created_at": "2026-03-16",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-020",
+   "family_id": "data_quality-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The issue was how a dimension mapping was applied to historical facts, not an organisational preference, so it sits in data_quality rather than workspace_admin.",
+   "category": "data_quality",
+   "subject": "Last year's regional totals changed after store reorganisation",
+   "description": "After the customer moved four stores from Northeast to Mid-Atlantic in the store hierarchy, last year's Northeast revenue dropped sharply, although those stores really were Northeast last year.",
+   "resolution_notes": "The store-to-region mapping was not effective-dated, so reassigning stores rewrote their history into the new region. Enabled effective-dated hierarchy mapping, set the move to apply from 1 July and recomputed regional aggregates. Last year's Northeast total returned to its published value while current figures reflect the new structure.",
+   "tags": [
+    "region-mapping",
+    "effective-dating",
+    "store-hierarchy"
+   ],
+   "created_at": "2025-07-22",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-021",
+   "family_id": "data_quality-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Two 'Accessories' categories merged into one",
+   "description": "Women's Accessories and Men's Accessories show as a single 'Accessories' row in the category breakdown, so the customer cannot compare them.",
+   "resolution_notes": "The category mapping joined products to categories by display name instead of category ID, collapsing different categories that share a name under different departments. Changed the join to the category ID and made labels show the department path when names collide. The breakdown now shows two rows whose sum equals the previous combined figure.",
+   "tags": [
+    "category-mapping",
+    "name-collision",
+    "merchandising"
+   ],
+   "created_at": "2026-08-11",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-022",
+   "family_id": "data_quality-f04",
+   "related_group": "data_quality-g12",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Click-and-collect orders counted as in-store sales",
+   "description": "The customer created a mapping rule so 'store_pickup' orders count in the Online channel, but the channel report still puts all click-and-collect revenue under In-store.",
+   "resolution_notes": "Mapping rules are evaluated top-down with the first match winning, and the rule editor appended the new rule below an older catch-all (fulfilment contains 'store' → In-store), so it never fired. Moved the specific rule above the catch-all and added an editor warning when a new rule is shadowed by an earlier one. Click-and-collect revenue now appears under Online and the channel split matches the order-management report.",
+   "tags": [
+    "channel-mapping",
+    "mapping-rules",
+    "click-and-collect"
+   ],
+   "created_at": "2025-12-15",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-023",
+   "family_id": "data_quality-f04",
+   "related_group": "data_quality-g12",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Outlet SKUs counted under full-price categories",
+   "description": "Merchandising says the outlet-only products they flagged last month still roll into full-price Footwear and Outerwear instead of the Outlet category.",
+   "resolution_notes": "The customer's new 'outlet flag → Outlet' rule sat underneath an existing department rule that matched first, so it was never evaluated for those products. Reordered the rules, re-ran classification and showed the admin the new shadowed-rule warning. Outlet now holds 412 SKUs, the same count as the customer's outlet price list.",
+   "tags": [
+    "category-mapping",
+    "rule-order",
+    "outlet"
+   ],
+   "created_at": "2026-04-27",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-024",
+   "family_id": "data_quality-f04",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Nothing was ingested twice; size variants lacked a parent mapping, so this is a dimension mapping problem rather than sync duplication.",
+   "category": "data_quality",
+   "subject": "Best sellers list shows the same jacket five times",
+   "description": "Customer says the Top 10 products widget lists 'Harbor Rain Jacket' five times with different revenue on each row and asked whether the product was duplicated.",
+   "resolution_notes": "Each row was a size variant: the source sends variants as separate products, and the parent-product link field had not been mapped for this connector, so variants were not rolled up. Mapped the parent ID field and enabled rollup to parent for the best-sellers widget. The jacket now appears once with revenue equal to the sum of its five variants.",
+   "tags": [
+    "product-hierarchy",
+    "variants",
+    "best-sellers"
+   ],
+   "created_at": "2025-01-27",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-025",
+   "family_id": "data_quality-f05",
+   "related_group": "data_quality-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Unique customers fell 30% after identity resolution was enabled",
+   "description": "The customer turned on cross-channel identity resolution and their unique customer count dropped by almost a third overnight, though order volume was unchanged.",
+   "resolution_notes": "The matching rule merged profiles on email alone, and the POS records receipt-only shoppers with the placeholder address receipts@lumengrocers.example.com, so tens of thousands of walk-in shoppers collapsed into one profile. Added a placeholder and shared-address exclusion list, put that address on it and re-ran resolution. Unique customers recovered to within 2% of the pre-change count, the remaining reduction coming from genuine cross-channel matches.",
+   "tags": [
+    "identity-resolution",
+    "placeholder-email",
+    "unique-customers"
+   ],
+   "created_at": "2025-03-11",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-026",
+   "family_id": "data_quality-f05",
+   "related_group": "data_quality-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "One 'customer' with $2.3M lifetime spend",
+   "description": "Customer success noticed the Top Customers list is headed by a single profile with 48,000 orders and $2.3M spend that nobody recognises.",
+   "resolution_notes": "The profile was an artefact of email-only matching: store associates enter a shared fallback email when a shopper declines to give one, and every such order merged into one identity. Excluded the shared fallback address from matching and re-resolved identities. The Top Customers list now shows real accounts, the largest with 61 orders, consistent with the CRM.",
+   "tags": [
+    "identity-resolution",
+    "top-customers",
+    "shared-email"
+   ],
+   "created_at": "2025-09-29",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-027",
+   "family_id": "data_quality-f05",
+   "related_group": "data_quality-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Repeat purchase rate jumped to 64% overnight",
+   "description": "Loyalty team asks why the repeat purchase rate leapt from 28% to 64% on the day identity matching was switched on, with no campaign running.",
+   "resolution_notes": "Walk-in purchases recorded with the same placeholder email were merged into a single profile, which removed thousands of one-time shoppers from the denominator and turned them into one very frequent buyer. Excluded placeholder addresses from matching and recomputed. The rate returned to 29%, in line with the loyalty program's own figure.",
+   "tags": [
+    "identity-resolution",
+    "repeat-rate",
+    "loyalty"
+   ],
+   "created_at": "2026-06-02",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-028",
+   "family_id": "data_quality-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Coffee bar transactions short on busy mornings",
+   "description": "A grocery customer's in-store café shows fewer transactions than the registers between 7 and 9 am, with the biggest gap on weekdays.",
+   "resolution_notes": "The transaction dedupe rule treated records with the same store, amount and timestamp (to the second) as duplicates, so identical $4.50 coffees rung up simultaneously on different registers were dropped. Added register ID and transaction number to the dedupe key and reprocessed 120 days. Morning transaction counts now match the register journals exactly.",
+   "tags": [
+    "deduplication",
+    "transaction-count",
+    "dedupe-key"
+   ],
+   "created_at": "2026-10-20",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-029",
+   "family_id": "data_quality-f05",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Same shopper counted as two customers",
+   "description": "Customer's CRM manager found that shoppers who once typed their email with a capital letter are counted as separate customers, inflating new-customer counts.",
+   "resolution_notes": "Email comparison in identity matching was case-sensitive, so 'Shopper.One@example.org' and 'shopper.one@example.org' produced two profiles. Lower-cased and trimmed emails before matching and re-resolved profiles. New-customer counts for the last quarter fell by 3.8%, and a sample of 50 merged pairs was confirmed as the same person in the CRM.",
+   "tags": [
+    "identity-resolution",
+    "email-normalization",
+    "new-customers"
+   ],
+   "created_at": "2026-09-15",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-030",
+   "family_id": "data_quality-f05",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Raw rows matched the source, so nothing was duplicated by the sync; the counting logic was wrong.",
+   "category": "data_quality",
+   "subject": "Order count higher than the order management system",
+   "description": "Agent summary: the customer sees about 6% more orders on the dashboard than in their order management system and suspected double-loaded data, but row counts in the raw tables match the source.",
+   "resolution_notes": "Orders split across several shipments arrive as one record per shipment sharing the parent order number, and the order count metric counted shipment records instead of distinct order numbers. Changed the metric to count distinct parent order numbers and recomputed. Daily order counts now match the order management system exactly.",
+   "tags": [
+    "order-count",
+    "split-shipments",
+    "distinct-count"
+   ],
+   "created_at": "2025-08-05",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-031",
+   "family_id": "data_quality-f06",
+   "related_group": "data_quality-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "West region average order value doesn't match finance",
+   "description": "The customer's finance team computes West region AOV as total revenue divided by total orders and gets $62.40; the regional tile shows $71.15.",
+   "resolution_notes": "The regional rollup averaged each store's AOV instead of dividing regional revenue by regional orders, giving small low-volume stores the same weight as flagships. Changed ratio metrics to recompute from numerator and denominator at every level. The West tile now shows $62.40.",
+   "tags": [
+    "aov",
+    "weighted-average",
+    "regional-rollup"
+   ],
+   "created_at": "2025-04-29",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-032",
+   "family_id": "data_quality-f06",
+   "related_group": "data_quality-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Company-wide average basket on Executive Summary looks too high",
+   "description": "The CFO's office says the chain-level average basket on the Executive Summary is several dollars above what their BI team calculates from the same order data.",
+   "resolution_notes": "The chain-level figure was the mean of store-level averages rather than total revenue over total transactions, so a handful of high-ticket boutique stores pulled it up. Switched the tile to a weighted calculation from summed revenue and transaction counts and recomputed. The tile now agrees with the BI team's figure to the cent.",
+   "tags": [
+    "aov",
+    "executive-summary",
+    "average-of-averages"
+   ],
+   "created_at": "2026-01-06",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-033",
+   "family_id": "data_quality-f06",
+   "related_group": "data_quality-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Quarterly AOV differs from the same quarter built from monthly rows",
+   "description": "Customer notices Q3 AOV is $54.10 in the quarterly view but $52.80 when they drill to months and compute it themselves from the monthly revenue and order columns.",
+   "resolution_notes": "The quarterly view averaged the three monthly AOV values instead of recalculating revenue over orders for the whole quarter, overweighting the month with fewer orders. Ratio metrics now re-aggregate from their components at every time grain. Q3 shows $52.80 in both views.",
+   "tags": [
+    "aov",
+    "time-rollup",
+    "ratio-metrics"
+   ],
+   "created_at": "2025-10-14",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-034",
+   "family_id": "data_quality-f06",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Weekly unique loyalty shoppers exceed total membership",
+   "description": "The Loyalty module reports 182,000 unique member shoppers last week, but the program only has 140,000 members in total.",
+   "resolution_notes": "The weekly figure was produced by adding up each day's distinct shopper count, which counts a member who shopped on three days three times. Changed weekly and monthly grains to count distinct members over the whole period from the underlying visits. Last week now shows 96,400 unique member shoppers, matching a direct count from the transactions.",
+   "tags": [
+    "distinct-count",
+    "loyalty",
+    "weekly-rollup"
+   ],
+   "created_at": "2026-02-23",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-035",
+   "family_id": "data_quality-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Median items per basket shows 2.47",
+   "description": "Customer questions how 'median items per basket' can be a fraction when every basket holds a whole number of items.",
+   "resolution_notes": "For large datasets the median was computed with an approximate percentile sketch that interpolates between values, producing non-integer results for discrete data. Switched medians of discrete counts to an exact calculation, which this dataset easily allows, and disabled interpolation for integer metrics. The tile now shows 2, matching an exact median computed from the raw baskets.",
+   "tags": [
+    "median",
+    "approximation",
+    "basket-size"
+   ],
+   "created_at": "2026-09-29",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-036",
+   "family_id": "data_quality-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Sell-through rate above 100% for several categories",
+   "description": "Merchandising sees June sell-through of 140% for Swimwear and asks how they could sell more than they had.",
+   "resolution_notes": "Sell-through was calculated as units sold divided by units received in the period, ignoring opening stock, so categories selling down earlier receipts exceeded 100%. Redefined it as units sold divided by opening on-hand plus units received, per the customer's merchandising definition, and recomputed. Swimwear June sell-through is now 71%, matching the planning team's spreadsheet.",
+   "tags": [
+    "sell-through",
+    "metric-definition",
+    "inventory"
+   ],
+   "created_at": "2026-07-07",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-037",
+   "family_id": "data_quality-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The stored computed values were off, not just the on-screen label, so this is data_quality rather than render.",
+   "category": "data_quality",
+   "subject": "Weekly sales tax a few cents off from the ERP",
+   "description": "Accounting reports that weekly sales tax in the Finance pack differs from the ERP by 3 to 12 cents almost every week.",
+   "resolution_notes": "Tax was rounded to two decimals on each order line before summing, whereas the ERP rounds once per invoice, so rounding residues accumulated. Changed the calculation to keep full precision per line and round at invoice level, mirroring the ERP. Weekly tax now matches the ERP to the cent for the last 26 weeks.",
+   "tags": [
+    "rounding",
+    "sales-tax",
+    "reconciliation"
+   ],
+   "created_at": "2025-02-25",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-038",
+   "family_id": "data_quality-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Discount amounts always one cent lower than the promotion engine",
+   "description": "On percentage-off promotions, the discount amount in reports is exactly one cent below the promotion engine's figure on roughly half of orders.",
+   "resolution_notes": "The calculated discount field truncated to two decimals instead of rounding, so any fraction of a cent was dropped. Changed it to round half-up, matching the promotion engine's documented behaviour, and recomputed promotion metrics. A sample of 500 orders now matches line by line.",
+   "tags": [
+    "rounding",
+    "truncation",
+    "promotions"
+   ],
+   "created_at": "2025-12-29",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-039",
+   "family_id": "data_quality-f07",
+   "related_group": "data_quality-g14",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Store daily totals occasionally off by one cent",
+   "description": "On random days a store's daily revenue differs by exactly $0.01 from the POS end-of-day total, and it never hits the same store twice in a row.",
+   "resolution_notes": "Daily revenue was summed with binary floating-point arithmetic, and accumulated representation error occasionally tipped the final rounding by a cent. Moved currency aggregation to fixed-point decimal arithmetic and recomputed the past year. A full comparison of 30 days across all stores shows zero mismatches.",
+   "tags": [
+    "numeric-precision",
+    "floating-point",
+    "daily-revenue"
+   ],
+   "created_at": "2026-04-14",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-040",
+   "family_id": "data_quality-f07",
+   "related_group": "data_quality-g14",
+   "challenge": null,
+   "classification_rationale": "The API returned what the engine computed; the cent breaks came from floating-point summation, so this is data_quality rather than api.",
+   "category": "data_quality",
+   "subject": "Reconciliation job flags one-cent breaks on busy days",
+   "description": "The customer runs an automated reconciliation between our API totals and their ledger and gets a handful of $0.01 breaks every week, always on high-volume days.",
+   "resolution_notes": "Aggregates were computed with binary floating-point sums, which drift by fractions of a cent when many transactions are added and occasionally round the wrong way. After the aggregation engine moved to decimal arithmetic and history was backfilled, two weeks of reconciliation runs completed with no breaks.",
+   "tags": [
+    "numeric-precision",
+    "reconciliation",
+    "decimal-arithmetic"
+   ],
+   "created_at": "2026-10-06",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-041",
+   "family_id": "data_quality-f07",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "This changed the computed totals themselves rather than how numbers are formatted on screen, so it is data_quality and not a number-format setting.",
+   "category": "data_quality",
+   "subject": "Rounded commission totals don't match finance's convention",
+   "description": "Customer's finance team rounds commissions half-up, so 2.345 becomes 2.35, but the Staff Commission report gives 2.34 for the same value.",
+   "resolution_notes": "The commission calculation used round-half-to-even, which sends exact halves to the nearest even digit. Changed the commission metric to round half-up, consistent with the customer's payroll rules, and recomputed the open period. Ten sample payslips now match finance's figures.",
+   "tags": [
+    "rounding",
+    "rounding-mode",
+    "commissions"
+   ],
+   "created_at": "2025-05-27",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-042",
+   "family_id": "data_quality-f07",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Rates were applied for the right dates; the drift came from truncated rate precision, a numeric precision defect rather than a conversion-date error.",
+   "category": "data_quality",
+   "subject": "JPY to USD revenue off by hundreds of dollars on large days",
+   "description": "For the customer's Tokyo stores, converted USD revenue differs from treasury's calculation by $200-$900 on busy days, even though the correct daily rates are being used.",
+   "resolution_notes": "The rate table stored exchange rates truncated to four decimal places, so a JPY-USD rate of 0.006694 was held as 0.0066, about 1.4% low on every yen. Increased stored rate precision to ten significant digits, reloaded the rate history and recomputed. Daily converted totals now match treasury within one cent.",
+   "tags": [
+    "numeric-precision",
+    "fx-rates",
+    "jpy"
+   ],
+   "created_at": "2025-08-26",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-043",
+   "family_id": "data_quality-f08",
+   "related_group": "data_quality-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Revenue from new web store connector 100x too high",
+   "description": "Two days after connecting their new web store, the customer's online revenue tile shows $4.1M for a weekend that actually brought in about $41,000.",
+   "resolution_notes": "The new connector delivers amounts in minor units (cents), and the source was set up with the major-unit amount format, so 4,100,000 cents was read as $4.1M. Set the amount format to minor units for that source and reprocessed its orders. Weekend revenue now shows $41,037.62, matching the store's payout report.",
+   "tags": [
+    "minor-units",
+    "amount-format",
+    "web-store"
+   ],
+   "created_at": "2025-01-15",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-044",
+   "family_id": "data_quality-f08",
+   "related_group": "data_quality-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Refunds showing as thousands instead of tens of dollars",
+   "description": "Per the customer, a $49.99 refund appears as $4,999.00 on the Returns dashboard, and only for orders from their mobile app storefront.",
+   "resolution_notes": "Refund events from the app storefront's payments feed carry amounts in cents, but the refund amount field was configured as decimal dollars. Corrected the unit for that feed and reprocessed refunds since the app storefront launched. The sample refund now shows $49.99 and the refund total matches the payment processor's report.",
+   "tags": [
+    "minor-units",
+    "refunds",
+    "mobile-storefront"
+   ],
+   "created_at": "2026-06-30",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-045",
+   "family_id": "data_quality-f08",
+   "related_group": "data_quality-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Average shipping fee jumped to $899",
+   "description": "The fulfilment dashboard's average shipping fee went from about $9 to $899 after the customer added a second checkout source.",
+   "resolution_notes": "Shipping amounts from the new checkout source arrive as integer cents and were read as dollars because the source's amount format was left at the default. Set the source to minor units and reprocessed. Average shipping fee is back to $8.99, consistent with the carrier invoice average.",
+   "tags": [
+    "minor-units",
+    "shipping-fees",
+    "checkout"
+   ],
+   "created_at": "2025-07-01",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-046",
+   "family_id": "data_quality-f08",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Tokyo store revenue 100 times too small",
+   "description": "After the customer's Japanese stores went live, the dashboard shows ¥18,500 for a day when the registers took about ¥1.85 million.",
+   "resolution_notes": "The amount parser applied a two-decimal minor-unit conversion to every currency, but JPY has no minor unit, so amounts were divided by 100. Changed the parser to use each currency's ISO 4217 exponent (zero for JPY and KRW) and reprocessed the Japanese stores. Daily totals now match the register reports.",
+   "tags": [
+    "minor-units",
+    "zero-decimal-currency",
+    "jpy"
+   ],
+   "created_at": "2025-09-16",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-047",
+   "family_id": "data_quality-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Negative stock on hand for bottled beverages",
+   "description": "The Inventory module shows negative on-hand quantities for most bottled water and soda SKUs, while store teams count full shelves.",
+   "resolution_notes": "Receipts for these SKUs arrive from the supplier feed in cases of 12, but they were added to stock as single units while POS sales were subtracted in single units, so stock went negative within days. Applied the pack-size conversion from the product master to supplier receipts and recomputed stock positions. On-hand for 40 sampled SKUs now agrees with cycle counts within normal shrink.",
+   "tags": [
+    "units-of-measure",
+    "pack-size",
+    "stock-on-hand"
+   ],
+   "created_at": "2026-03-24",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-048",
+   "family_id": "data_quality-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Average parcel weight reported as 1,250 kg",
+   "description": "Logistics manager says the fulfilment dashboard puts average parcel weight at over a tonne, which would make every parcel a pallet.",
+   "resolution_notes": "The shipping integration supplies weights in grams, but the weight field was tagged as kilograms, so a 1.25 kg parcel was stored as 1,250 kg. Set the field's unit to grams so values are converted on load and reprocessed shipments. Average parcel weight now reads 1.25 kg, matching the carrier manifest.",
+   "tags": [
+    "units-of-measure",
+    "weight",
+    "fulfilment"
+   ],
+   "created_at": "2026-11-10",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-049",
+   "family_id": "data_quality-f09",
+   "related_group": "data_quality-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Net revenue lower than finance after partial refunds",
+   "description": "Finance says net revenue on the dashboard comes in below their figure, and the gap equals the total of partial refunds issued that month.",
+   "resolution_notes": "For partially refunded orders the source updates the order total and also emits a refund record, and net revenue subtracted both, removing each partial refund twice. Changed netting to start from the original order amount and deduct refund records only, then recomputed the affected months. September net revenue now matches finance exactly.",
+   "tags": [
+    "refunds",
+    "partial-refunds",
+    "net-revenue"
+   ],
+   "created_at": "2025-10-09",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-050",
+   "family_id": "data_quality-f09",
+   "related_group": "data_quality-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Partially refunded orders show too little net value",
+   "description": "In the order detail table, a $120 order with a $40 partial refund shows a net value of $40 instead of $80, and a few orders even show negative values.",
+   "resolution_notes": "The net value calculation took the already-adjusted order total ($80) and then subtracted the refund record ($40) again. Switched the calculation to start from the original captured amount so each refund is deducted once, and reprocessed. The example order now shows $80 and no orders carry a negative net value.",
+   "tags": [
+    "refunds",
+    "order-net-value",
+    "double-subtraction"
+   ],
+   "created_at": "2026-08-25",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-051",
+   "family_id": "data_quality-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Last month's net sales keep shrinking as returns come in",
+   "description": "The customer closes the books on the 5th, but net sales for the closed month keep decreasing on the dashboard for weeks afterwards.",
+   "resolution_notes": "Returns were attributed to the original sale date, so every return processed after close reduced an already-closed month. Configured the Finance pack's net sales to attribute returns to the date they were processed, matching the customer's accounting policy, while Merchandising views keep sale-date attribution for return-rate analysis. Over the following month the closed period's net sales did not change after the 5th.",
+   "tags": [
+    "returns",
+    "attribution-date",
+    "month-close"
+   ],
+   "created_at": "2025-03-06",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-052",
+   "family_id": "data_quality-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Return rate doubled after enabling in-store exchanges",
+   "description": "Since the customer started offering in-store exchanges, their return rate has roughly doubled, though operations says actual refunds are flat.",
+   "resolution_notes": "Exchanges come through as a return transaction paired with a new sale, and the return-rate metric counted the return leg like any refunded return. Changed the metric to exclude return lines linked to an exchange sale via the exchange reference ID and to report exchanges separately. Return rate went back to 8.2%, consistent with refunds issued.",
+   "tags": [
+    "returns",
+    "exchanges",
+    "return-rate"
+   ],
+   "created_at": "2026-02-02",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-053",
+   "family_id": "data_quality-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Holiday revenue inflated by gift card sales",
+   "description": "Customer's December revenue was about 6% above the ERP and January also ran high; finance suspects gift cards are involved.",
+   "resolution_notes": "Gift card sales were counted as revenue when sold and the same value was counted again when redeemed against merchandise. Reclassified gift card sales as a liability movement excluded from net revenue, kept redemptions as revenue and recomputed both months. December and January now match the ERP's recognised revenue within 0.05%.",
+   "tags": [
+    "gift-cards",
+    "revenue-recognition",
+    "double-counting"
+   ],
+   "created_at": "2026-01-13",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-054",
+   "family_id": "data_quality-f09",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Store-credit refunds not reducing net revenue",
+   "description": "Customer says refunds issued as store credit never reduce net revenue, so stores that push store credit look better than they are.",
+   "resolution_notes": "The netting logic only treated refunds paid back to card or cash as deductions and ignored the 'credit_note' refund method. As an interim fix we added a workspace-level rule that treats credit notes as refunds and recomputed the quarter; a product change to include all refund methods by default is scheduled for the next release. Net revenue for the five store-credit-heavy stores now matches their refund ledger.",
+   "tags": [
+    "refunds",
+    "store-credit",
+    "net-revenue"
+   ],
+   "created_at": "2025-06-17",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-055",
+   "family_id": "data_quality-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Average product rating dragged down by unrated items",
+   "description": "The product reviews widget shows an average rating of 2.1 stars, while the reviews platform reports 4.3 for the same catalogue.",
+   "resolution_notes": "Products without reviews had a null rating, and the average treated nulls as zero, pulling the mean down. Changed the calculated metric to ignore nulls in averages and to show the count of rated products alongside. The widget now shows 4.3, matching the reviews platform.",
+   "tags": [
+    "calculated-fields",
+    "null-handling",
+    "ratings"
+   ],
+   "created_at": "2026-05-19",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-056",
+   "family_id": "data_quality-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Closed stores flagged as 0% conversion",
+   "description": "On Boxing Day, every store that was closed shows 0% conversion on the store leaderboard, and the 'stores below conversion target' tile jumped from 3 to 41.",
+   "resolution_notes": "The conversion formula returned 0 instead of null when the visitor count was 0, so closed stores looked like open stores with no sales. Changed division by zero to return null so those stores drop out of leaderboards and target counts, and recomputed the holiday dates. The tile now shows 2 stores below target for that day, both of which were open.",
+   "tags": [
+    "calculated-fields",
+    "divide-by-zero",
+    "conversion-rate"
+   ],
+   "created_at": "2025-12-30",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-057",
+   "family_id": "data_quality-f10",
+   "related_group": "data_quality-g13",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Gross margin % shows millions of percent after editor upgrade",
+   "description": "After the calculated-field editor upgrade, the customer's custom 'Gross margin %' metric shows values like 1,204,331% for every category.",
+   "resolution_notes": "The migration to the new formula engine rewrote '(revenue - cogs) / revenue' as 'revenue - cogs / revenue', so the result became revenue minus a small fraction. Restored the original expression from the pre-migration snapshot, fixed the migration serializer to preserve grouping and re-checked every calculated field in the workspace. Gross margin % is back to 38-46% by category, matching the customer's spreadsheet.",
+   "tags": [
+    "calculated-fields",
+    "formula-migration",
+    "gross-margin"
+   ],
+   "created_at": "2025-08-12",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-058",
+   "family_id": "data_quality-f10",
+   "related_group": "data_quality-g13",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Custom sales-per-labour-hour metric wrong since editor update",
+   "description": "The customer's operations analyst says the custom sales-per-labour-hour metric changed on the day the new formula editor shipped, though nobody touched it.",
+   "resolution_notes": "Their expression 'net_sales / (scheduled_hours + overtime_hours)' was migrated without the parentheses, so it divided by scheduled hours only and then added overtime hours to the result. Restored the grouping and confirmed the corrected migration now preserves parentheses for all formulas. Values for the last four weeks match the analyst's manual calculation.",
+   "tags": [
+    "calculated-fields",
+    "formula-migration",
+    "labour-productivity"
+   ],
+   "created_at": "2025-08-14",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-059",
+   "family_id": "data_quality-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Units per transaction always a whole number",
+   "description": "The customer's 'units per transaction' metric only ever shows 1 or 2, never values like 1.6.",
+   "resolution_notes": "Both inputs were integer fields, and the calculation engine performed integer division when both operands were integers. Changed the engine to promote division to decimal and recomputed the metric. Units per transaction now shows 1.62 for last week, matching a manual calculation from the order lines.",
+   "tags": [
+    "calculated-fields",
+    "integer-division",
+    "upt"
+   ],
+   "created_at": "2026-10-27",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-060",
+   "family_id": "data_quality-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Contribution margin equals revenue after a metric rename",
+   "description": "An admin renamed the base metric 'COGS' to 'Cost of goods'; since then the custom 'Contribution margin' metric equals revenue, as if cost were zero.",
+   "resolution_notes": "The calculated field referenced the base metric by name, and after the rename the reference resolved to null, which the formula coalesced to zero. Rebound the field to the metric's ID and changed the editor to store ID-based references and flag broken ones instead of substituting zero. Contribution margin is back to its pre-rename values.",
+   "tags": [
+    "calculated-fields",
+    "metric-rename",
+    "broken-reference"
+   ],
+   "created_at": "2026-05-05",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-061",
+   "family_id": "data_quality-f11",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The workspace already had the 4-5-4 calendar configured; the comparison engine ignored it, so this is data_quality and not a fiscal-year setting issue.",
+   "category": "data_quality",
+   "subject": "Year-over-year compares Black Friday with last year's Thanksgiving",
+   "description": "With the retail 4-5-4 calendar enabled, the customer's daily YoY comparison still lined up 28 November 2025 against 28 November 2024, which was Thanksgiving Day, so Black Friday showed +180%.",
+   "resolution_notes": "The day-level comparison used calendar-date alignment even though the workspace calendar was retail 4-5-4, which should align on the same fiscal week and weekday (364 days back). Fixed the comparison to honour the workspace calendar's alignment rule and recomputed. Black Friday 2025 is now compared with Black Friday 2024 and shows +6.4%.",
+   "tags": [
+    "year-over-year",
+    "retail-calendar",
+    "black-friday"
+   ],
+   "created_at": "2025-12-01",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-062",
+   "family_id": "data_quality-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Like-for-like sales include a store that opened in March",
+   "description": "The customer's comparable-store growth looks strong, but the comp set includes the new Riverside store, which only opened this March.",
+   "resolution_notes": "Comp-store eligibility was based on the date the store record was created in the workspace, and the Riverside record had been created a year early during planning. Changed eligibility to use the store's actual opening date field and recalculated the comp set. Like-for-like growth fell from 5.1% to 3.4%, matching the customer's own comp calculation.",
+   "tags": [
+    "like-for-like",
+    "comp-stores",
+    "store-opening-date"
+   ],
+   "created_at": "2026-06-16",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-063",
+   "family_id": "data_quality-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "28 February compared against 29 February last year",
+   "description": "Customer noticed the day-over-year view pairs 28 February 2025 with 29 February 2024, while 28 February 2024 is never used as a comparison.",
+   "resolution_notes": "Calendar-mode comparisons shifted dates by exactly 365 days, which mis-pairs dates around a leap day. Changed calendar-date alignment to match the same month and day, mapping 29 February to 28 February when comparing into a non-leap year. 28 February 2025 now compares with 28 February 2024.",
+   "tags": [
+    "year-over-year",
+    "leap-day",
+    "date-alignment"
+   ],
+   "created_at": "2025-03-03",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-064",
+   "family_id": "data_quality-f11",
+   "related_group": "data_quality-g15",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Month-to-date growth shows -60% on the 10th",
+   "description": "Every month the MTD revenue tile shows large negative growth during the first weeks, only recovering by month end.",
+   "resolution_notes": "The month-to-date comparison used the full prior month as its base instead of the same number of elapsed days. Changed to-date comparisons to align on elapsed days (1st-10th against 1st-10th) and recomputed. On the 10th of the following month the tile showed +3.2%, consistent with the daily trend.",
+   "tags": [
+    "period-comparison",
+    "month-to-date",
+    "growth"
+   ],
+   "created_at": "2025-09-10",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-065",
+   "family_id": "data_quality-f11",
+   "related_group": "data_quality-g15",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Week-to-date indicator red every Monday",
+   "description": "Store managers say the week-to-date versus last week indicator is red every Monday and Tuesday, even for stores clearly trading ahead.",
+   "resolution_notes": "The week-to-date tile compared the partial current week against the whole of last week, so early in the week it always looked behind. The elapsed-period alignment already applied to month-to-date was extended to week-to-date and quarter-to-date tiles. The following Monday, the indicator compared Monday against last Monday and showed green for the stores trading ahead of last week.",
+   "tags": [
+    "period-comparison",
+    "week-to-date",
+    "store-managers"
+   ],
+   "created_at": "2025-09-24",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-066",
+   "family_id": "data_quality-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Store closed for refit still in the comparable-store set",
+   "description": "Customer's comp sales dropped two points in August, and they traced it to the Elm Street store, which was closed for six weeks for a refit.",
+   "resolution_notes": "Comp-store logic only excluded stores by opening date and ignored temporary closures recorded in the store calendar. Added exclusion of stores closed longer than the customer's 7-day threshold in either the current or comparison period and recalculated. August comp growth is now 2.9%, in line with the customer's finance pack.",
+   "tags": [
+    "like-for-like",
+    "store-closure",
+    "comp-stores"
+   ],
+   "created_at": "2026-09-08",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-067",
+   "family_id": "data_quality-f12",
+   "related_group": "data_quality-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Weekly inventory shows seven times the stock",
+   "description": "Switching the Inventory module from the daily to the weekly view multiplies stock on hand by about seven.",
+   "resolution_notes": "Stock on hand is a snapshot measure, but the weekly rollup summed the daily snapshots instead of taking the last day of the week. Set the measure's time aggregation to end-of-period and recomputed rollups. Weekly stock on hand now equals the closing Sunday snapshot.",
+   "tags": [
+    "semi-additive",
+    "stock-on-hand",
+    "weekly-rollup"
+   ],
+   "created_at": "2025-04-15",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-068",
+   "family_id": "data_quality-f12",
+   "related_group": "data_quality-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Monthly report says a store holds 30 times its capacity",
+   "description": "Per the customer's inventory planner: 'The monthly report says Store 12 has 1.4 million units on hand; it physically fits about 50,000.'",
+   "resolution_notes": "Monthly on-hand was produced by adding each day's stock snapshot, so a 30-day month multiplied stock by roughly 30. Changed the time aggregation for on-hand measures to closing balance and backfilled. Store 12 now shows 46,800 units at month end, matching the store's count.",
+   "tags": [
+    "semi-additive",
+    "inventory",
+    "monthly-rollup"
+   ],
+   "created_at": "2025-07-08",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-069",
+   "family_id": "data_quality-f12",
+   "related_group": "data_quality-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Weeks of supply in the hundreds for core lines",
+   "description": "Weeks of supply for basic t-shirts reads 312 weeks on the planning dashboard, but planners know there's about six weeks of stock.",
+   "resolution_notes": "Weeks of supply divides stock on hand by average weekly sales, and the stock input was summed over every day of the selected 8-week range. After setting on-hand to use the closing value of the range, the metric reads 5.8 weeks, matching the planning system.",
+   "tags": [
+    "semi-additive",
+    "weeks-of-supply",
+    "planning"
+   ],
+   "created_at": "2026-11-03",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-070",
+   "family_id": "data_quality-f12",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Quarterly active loyalty members triple the monthly figure",
+   "description": "The Loyalty module shows 2.4 million active members for Q1, while each month on its own shows about 800,000.",
+   "resolution_notes": "The active-members measure is a monthly snapshot, and the quarterly rollup summed the three monthly snapshots. Configured it as a semi-additive measure that takes the latest month in the period and recomputed. Q1 now reports 812,000, the March closing count.",
+   "tags": [
+    "semi-additive",
+    "loyalty-members",
+    "quarterly-rollup"
+   ],
+   "created_at": "2026-04-07",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-071",
+   "family_id": "data_quality-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Gift card liability shows the opening balance at month end",
+   "description": "Finance says the 'Outstanding gift card balance' tile for June shows the balance as of 1 June rather than 30 June.",
+   "resolution_notes": "The balance measure had been configured with a 'first value' time aggregation instead of 'last value', so each period showed its opening balance. Switched it to last value and recomputed history. June now shows the 30 June balance, matching the gift card ledger.",
+   "tags": [
+    "semi-additive",
+    "gift-card-liability",
+    "closing-balance"
+   ],
+   "created_at": "2025-07-03",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-072",
+   "family_id": "data_quality-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Category stock lower than the sum of its stores",
+   "description": "Agent summary: for Home & Kitchen, category-level stock on hand is about 18% lower than adding up the same category across all stores on the same day.",
+   "resolution_notes": "Stores send inventory snapshots at different times of day, and the category rollup took the latest snapshot timestamp across the whole category rather than the latest snapshot per store, dropping stores that had reported earlier. Changed the end-of-period logic to select each store's last snapshot before summing. Category totals now equal the sum of store totals.",
+   "tags": [
+    "semi-additive",
+    "snapshot-grain",
+    "category-rollup"
+   ],
+   "created_at": "2026-08-18",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-073",
+   "family_id": "data_quality-f13",
+   "related_group": "data_quality-g07",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Revenue with a promotion filter exceeds unfiltered revenue",
+   "description": "Customer filtered the Sales Overview to orders 'with any promotion' and got a higher revenue figure than the unfiltered total for the same week.",
+   "resolution_notes": "Orders were joined to their promotion codes one-to-many, so an order using two codes contributed its revenue twice. Changed the model to apply promotion filters through an existence check rather than a direct join, and to allocate revenue per code only inside the promotion breakdown. The filtered total is now a subset of the unfiltered total.",
+   "tags": [
+    "join-fan-out",
+    "promotions",
+    "filters"
+   ],
+   "created_at": "2025-12-09",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-074",
+   "family_id": "data_quality-f13",
+   "related_group": "data_quality-g07",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Promotions report adds up to more than total sales",
+   "description": "The revenue column of the Promotions report sums to 112% of the store's total revenue for the same period.",
+   "resolution_notes": "Each order was attributed in full to every promotion code applied to it, so stacked promotions double-counted revenue. Switched the report to allocate an order's revenue across its codes in proportion to each code's discount, with unallocated attributed revenue available as a clearly labelled option. Allocated totals now sum to 100% of promoted-order revenue.",
+   "tags": [
+    "join-fan-out",
+    "promotion-attribution",
+    "stacked-discounts"
+   ],
+   "created_at": "2026-02-17",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-075",
+   "family_id": "data_quality-f13",
+   "related_group": "data_quality-g07",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Black Friday campaign credited with more than the web store made",
+   "description": "During Black Friday week the customer let shoppers stack a sitewide code with a loyalty code, and the campaign dashboard now credits the campaign with more revenue than the whole web store took.",
+   "resolution_notes": "Orders with two codes fanned out in the join between orders and promotion codes, counting their revenue twice. As an immediate workaround we published a version of the campaign dashboard that counts each order once by distinct order ID; the permanent model change to allocate revenue across stacked codes was scheduled for the following release. The workaround dashboard's total matched web store revenue for the week.",
+   "tags": [
+    "join-fan-out",
+    "black-friday",
+    "campaign-dashboard"
+   ],
+   "created_at": "2025-12-02",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-076",
+   "family_id": "data_quality-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Monthly sales target shows as $9.3M for a $310K store",
+   "description": "On the Store Performance dashboard, each store's monthly target is roughly thirty times the figure finance loaded in the plan file.",
+   "resolution_notes": "Monthly targets were joined to daily sales rows on store and month, so the target value repeated on every day and was then summed. Moved targets to their own monthly fact and blended them with sales at month grain. Targets now match the uploaded plan.",
+   "tags": [
+    "join-fan-out",
+    "sales-targets",
+    "grain-mismatch"
+   ],
+   "created_at": "2025-02-04",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-077",
+   "family_id": "data_quality-f13",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Customer lifetime value doubled for shoppers with two addresses",
+   "description": "In the Customer module, lifetime value for shoppers who saved both a home and a work address is exactly twice what their order history adds up to.",
+   "resolution_notes": "Customer profiles were joined to the address table to support region filters, and customers with several addresses fanned out, duplicating their order totals. Changed the region filter to use the default billing address only and removed the address join from value calculations. Lifetime value now equals each customer's summed order history.",
+   "tags": [
+    "join-fan-out",
+    "customer-lifetime-value",
+    "addresses"
+   ],
+   "created_at": "2026-10-13",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-078",
+   "family_id": "data_quality-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Shipping income multiplied by number of items",
+   "description": "Shipping income in the fulfilment view is far higher than what customers paid; a three-item order with $7 shipping shows $21.",
+   "resolution_notes": "The order-level shipping fee was attached to every line item when order lines were joined to orders, then summed across lines. Moved shipping to the order grain so it is counted once per order and recomputed. The example order now shows $7 and monthly shipping income matches the payment processor.",
+   "tags": [
+    "join-fan-out",
+    "shipping-revenue",
+    "order-lines"
+   ],
+   "created_at": "2026-03-31",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-079",
+   "family_id": "data_quality-f14",
+   "related_group": "data_quality-g09",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Same store appears twice in the store ranking",
+   "description": "The store ranking lists 'Oakbrook' and 'Oakbrook ' (with a trailing space) as separate rows, each holding part of the store's sales.",
+   "resolution_notes": "Store labels from two sources differed by trailing whitespace and were grouped on the raw label rather than the store ID. Trimmed and normalised labels on load and grouped by store ID, taking the label from the store master. The ranking now shows one Oakbrook row with the combined total.",
+   "tags": [
+    "text-normalization",
+    "store-names",
+    "grouping"
+   ],
+   "created_at": "2025-06-03",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-080",
+   "family_id": "data_quality-f14",
+   "related_group": "data_quality-g09",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Active stores tile says 219 for a 212-store chain",
+   "description": "Customer has 212 stores but the 'Active stores' tile shows 219; the extra entries look like existing stores spelled in capitals.",
+   "resolution_notes": "The tile counted distinct store names, and two sources supplied some names in upper case ('MAPLE RIDGE' versus 'Maple Ridge') or with stray spaces. Counting now uses distinct store IDs, and labels are normalised for case and whitespace on load. The tile shows 212.",
+   "tags": [
+    "text-normalization",
+    "store-count",
+    "case-sensitivity"
+   ],
+   "created_at": "2026-01-27",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-081",
+   "family_id": "data_quality-f14",
+   "related_group": "data_quality-g10",
+   "challenge": null,
+   "classification_rationale": "The file loaded successfully; values were altered by type inference, which is a data quality issue rather than a failed ingestion.",
+   "category": "data_quality",
+   "subject": "Products showing as 'Unknown product' after CSV upload",
+   "description": "After uploading the weekly sales CSV, about a fifth of the rows show 'Unknown product' even though every SKU exists in the catalogue.",
+   "resolution_notes": "The CSV importer inferred the SKU column as numeric, stripping leading zeros so '004512' became '4512' and no longer matched the catalogue. Set the SKU column type to text in the upload template so the original strings are preserved and reprocessed the file. All rows now match a catalogue product.",
+   "tags": [
+    "leading-zeros",
+    "type-inference",
+    "sku-matching"
+   ],
+   "created_at": "2025-08-29",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-082",
+   "family_id": "data_quality-f14",
+   "related_group": "data_quality-g10",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Almost no customers mapped to New England",
+   "description": "Customer analytics shows almost no customers in New England and a cluster of unrecognised postal codes such as '2108' and '1950'.",
+   "resolution_notes": "Postal codes in the customer file were typed as numbers on import, so the leading zeros of codes like 02108 and 01950 were dropped and the region lookup failed. Forced the postal code column to text and re-imported. New England customers now map correctly and the unknown-region bucket fell from 4.6% to 0.1%.",
+   "tags": [
+    "leading-zeros",
+    "postal-codes",
+    "region-lookup"
+   ],
+   "created_at": "2026-05-26",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-083",
+   "family_id": "data_quality-f14",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "No records were duplicated; two Unicode encodings of the same label were grouped separately.",
+   "category": "data_quality",
+   "subject": "Duplicate 'Café' rows in the menu-item breakdown",
+   "description": "A food-service customer sees two 'Café' rows in the menu breakdown that look identical on screen but carry different numbers.",
+   "resolution_notes": "One source sends the label with a precomposed 'é' and another with 'e' plus a combining accent, and grouping compared the raw byte strings. Applied Unicode NFC normalisation to text dimensions on load and reprocessed. The breakdown now shows a single Café row.",
+   "tags": [
+    "text-normalization",
+    "unicode",
+    "category-labels"
+   ],
+   "created_at": "2025-10-28",
+   "status": "resolved"
+  },
+  {
+   "key": "data_quality-084",
+   "family_id": "data_quality-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "data_quality",
+   "subject": "Barcodes lose their last digits after product file import",
+   "description": "After importing the product master file, many barcodes end in 000 and several unrelated products now share the same barcode.",
+   "resolution_notes": "The customer's spreadsheet tool had written the 13-digit barcode column in scientific notation (5.01234567891E+12), and our importer parsed those values as numbers with only 12 significant digits. The customer re-exported the file with the column formatted as text, and the importer now rejects identifier columns containing scientific notation with a clear error. After reloading, all 8,410 barcodes are unique and match the shelf labels.",
+   "tags": [
+    "barcodes",
+    "scientific-notation",
+    "product-master"
+   ],
+   "created_at": "2026-07-21",
+   "status": "resolved"
+  }
+ ]
+}

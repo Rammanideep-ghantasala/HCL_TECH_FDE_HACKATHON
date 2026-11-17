@@ -1,0 +1,83 @@
+[
+ {
+  "ticket_id": "T-2129",
+  "batch_key": "render-011",
+  "issue_type": "inconsistent",
+  "fields": [
+   "description",
+   "subject"
+  ],
+  "explanation": "The stated cause is a cache key that ignores each user's week-start preference, so both managers get the same cached result. That would make them see identical totals, but the subject and description say they see different totals at the same moment. The resolution then says each manager now sees totals for their own week start, which would make their totals differ, so the reported symptom is the post-fix behaviour. The symptom, cause and resolution contradict each other. The smallest fix keeps the cause and the resolution and rewrites the subject and description to describe the symptom this cause produces, while keeping the 'Two managers see ... weekly totals' wording for the similar_wording_different_problem challenge.",
+  "before": {
+   "subject": "Two managers see different weekly totals on one dashboard",
+   "description": "Two regional managers looking at the same shared dashboard at the same moment see different weekly totals, though they have identical access."
+  },
+  "after": {
+   "subject": "Two managers see identical weekly totals despite different week starts",
+   "description": "Two regional managers with identical access compare the same shared dashboard. One has weeks starting on Sunday and the other on Monday, yet both see exactly the same weekly totals, and for the Sunday-start manager they do not match her own Sunday-to-Saturday figures."
+  }
+ },
+ {
+  "ticket_id": "T-2833",
+  "batch_key": "export-028",
+  "issue_type": "inconsistent",
+  "fields": [
+   "description",
+   "resolution_notes"
+  ],
+  "explanation": "The description says customer names show the Unicode replacement character (�). The resolution blames an 'ASCII-safe output' sanitiser that replaces every non-ASCII character. U+FFFD is itself non-ASCII, so an ASCII-safe sanitiser could not write it: the symptom it would produce is '?' or similar ASCII substitutes. The change below keeps the same incident and the same_symptom_different_cause challenge (accented names still corrupted despite the BOM).",
+  "before": {
+   "description": "Even with 'UTF-8 with BOM' switched on, some customer names in CSV exports show replacement characters (�) instead of accented letters.",
+   "resolution_notes": "A previous admin had enabled the 'ASCII-safe output' sanitiser on the export profile, which replaces every non-ASCII character. With the current admin's agreement, turned the sanitiser off. Confirmed accented names exported intact."
+  },
+  "after": {
+   "description": "Even with 'UTF-8 with BOM' switched on, accented letters in some customer names come out as question marks in CSV exports, so 'Renée' appears as 'Ren?e'.",
+   "resolution_notes": "A previous admin had enabled the 'ASCII-safe output' sanitiser on the export profile, which replaces every non-ASCII character with '?'. With the current admin's agreement, turned the sanitiser off. Confirmed accented names exported intact."
+  }
+ },
+ {
+  "ticket_id": "T-2086",
+  "batch_key": "alerts-037",
+  "issue_type": "inconsistent",
+  "fields": [
+   "resolution_notes"
+  ],
+  "explanation": "The subject and description say the alert emails were quarantined by the customer's gateway, but the resolution says the strict receiving policies 'rejected' them. Rejected mail is bounced, not quarantined, so the resolution contradicts the observed symptom.",
+  "before": {
+   "resolution_notes": "Alert emails had moved to a new sending subdomain, alerts.example.com, which was missing DKIM signing on our side, so strict receiving policies rejected them. Enabled and published DKIM for the subdomain. The customer's gateway accepted the next test alert with authentication passing, and no exemption was needed on their side."
+  },
+  "after": {
+   "resolution_notes": "Alert emails had moved to a new sending subdomain, alerts.example.com, which was missing DKIM signing on our side, so strict receiving policies quarantined them. Enabled and published DKIM for the subdomain. The customer's gateway accepted the next test alert with authentication passing, and no exemption was needed on their side."
+  }
+ },
+ {
+  "ticket_id": "T-2663",
+  "batch_key": "data_quality-065",
+  "issue_type": "other",
+  "fields": [
+   "resolution_notes"
+  ],
+  "explanation": "The resolution notes have no real verification outcome. The final sentence ('Monday's indicator now compares Monday against last Monday') describes the new behaviour but does not confirm that the reported symptom is gone. Replacing it with an observed result fixes this without changing the incident.",
+  "before": {
+   "resolution_notes": "The week-to-date tile compared the partial current week against the whole of last week, so early in the week it always looked behind. The elapsed-period alignment already applied to month-to-date was extended to week-to-date and quarter-to-date tiles. Monday's indicator now compares Monday against last Monday."
+  },
+  "after": {
+   "resolution_notes": "The week-to-date tile compared the partial current week against the whole of last week, so early in the week it always looked behind. The elapsed-period alignment already applied to month-to-date was extended to week-to-date and quarter-to-date tiles. The following Monday, the indicator compared Monday against last Monday and showed green for the stores trading ahead of last week."
+  }
+ },
+ {
+  "ticket_id": "T-2960",
+  "batch_key": "workspace_admin-004",
+  "issue_type": "inconsistent",
+  "fields": [
+   "description"
+  ],
+  "explanation": "The description says the footer should show the customer's 'new trading name', but the resolution puts the 'newly registered name' into the 'Organisation legal name' field. If only the trading name had changed, writing it into the legal-name field would misstate the legal entity on reports. The ticket is about telling the legal name apart from the display name, so the description and resolution should both describe a changed registered name. Swapping 'Juniper' for a clearly invented name also avoids an association with a real networking-hardware vendor. If the editor wants the smallest possible change, replacing 'their new trading name' with 'the company's new registered name' alone is enough.",
+  "before": {
+   "description": "The customer changed the workspace name months ago, but the footer of every PDF report still reads 'Juniper Hardware Ltd' instead of their new trading name."
+  },
+  "after": {
+   "description": "The customer changed the workspace name months ago after re-registering the company under a new name, but the footer of every PDF report still reads 'Quillbrook Hardware Ltd' instead of the new registered name."
+  }
+ }
+]

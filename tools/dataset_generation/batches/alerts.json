@@ -1,0 +1,1650 @@
+{
+ "category": "alerts",
+ "issue_families": [
+  {
+   "family_id": "alerts-f01",
+   "name": "Threshold and comparison misconfiguration",
+   "summary": "Rules compare against the wrong unit, currency, operator, boundary or baseline period, or lose their threshold through an editor defect, so alerts fire constantly or never.",
+   "boundary_note": "The metric values are correct and only the rule definition is wrong, so this is alerts rather than data_quality."
+  },
+  {
+   "family_id": "alerts-f02",
+   "name": "Evaluation window and aggregation mismatch",
+   "summary": "Rolling versus calendar windows, sum versus average, tiny samples, week definitions and 'for' durations make a rule evaluate something different from what the customer reads on the dashboard.",
+   "boundary_note": "The dashboard numbers are right; the alert evaluates a different window or aggregate, which is a rule configuration matter for alerts rather than data_quality or render."
+  },
+  {
+   "family_id": "alerts-f03",
+   "name": "Evaluation timing versus data arrival",
+   "summary": "Rules evaluate before the latest batch of data has landed or re-evaluate old periods when delayed data catches up, causing false drops, missed spikes or bursts of stale alerts.",
+   "boundary_note": "Data arrives on its normal schedule (not sync); the problem is when the alert evaluates relative to that arrival."
+  },
+  {
+   "family_id": "alerts-f04",
+   "name": "Suppression, mute and maintenance windows",
+   "summary": "Maintenance windows in the wrong time zone, snoozes applied too broadly, mutes that never expire and missing dependency suppression lead to alerts during planned work or silence during real incidents.",
+   "boundary_note": "Concerns when alert notifications are deliberately held back, a capability that exists only in the alerting feature."
+  },
+  {
+   "family_id": "alerts-f05",
+   "name": "Duplicate alert notifications",
+   "summary": "Cloned rules, overlapping recipient lists, short re-notify intervals and double evaluation during scheduler failover send the same alert more than once.",
+   "boundary_note": "Duplicated alert notifications are alerts; duplicated generic webhook events for integrations are api and duplicated synced records are sync."
+  },
+  {
+   "family_id": "alerts-f06",
+   "name": "Flapping alerts and missing hysteresis",
+   "summary": "Metrics hovering around a threshold, noisy minute-level data, gaps treated as recovery and severity thresholds set too close together cause repeated fire and resolve cycles.",
+   "boundary_note": "The metric itself is behaving normally; the rule lacks recovery thresholds, smoothing or pending periods, which is alerts configuration."
+  },
+  {
+   "family_id": "alerts-f07",
+   "name": "Email channel delivery of alerts",
+   "summary": "Alert emails are delayed, quarantined, bounced, suppressed, mis-templated or missing images because of sender authentication, list policies, suppression lists, digest settings or template variables.",
+   "boundary_note": "Covers emails that carry alert notifications only; password-reset emails are auth and scheduled report emails are export."
+  },
+  {
+   "family_id": "alerts-f08",
+   "name": "Chat-tool channel delivery of alerts",
+   "summary": "Alert posts to the customer's chat tool fail because the app's token was revoked, the app is not in a private channel, the channel was archived or messages exceed size limits.",
+   "boundary_note": "Delivery of alert notifications into a chat tool is alerts; it is not an inbound data sync or a generic API problem."
+  },
+  {
+   "family_id": "alerts-f09",
+   "name": "Webhook channel delivery of alerts",
+   "summary": "Alert webhooks to on-call or automation tools fail or misbehave because of payload templates producing invalid JSON, rotated routing keys, unstable dedup keys, slow receivers or payload format changes.",
+   "boundary_note": "These webhooks carry alert notifications through an alert channel; general product event webhooks and their subscriptions are api."
+  },
+  {
+   "family_id": "alerts-f10",
+   "name": "No-data and missing-data handling",
+   "summary": "Rules treat missing data as OK, as zero, or as an alert condition in ways that hide feed outages, fire for closed stores or sparse metrics, or leave rules stuck on a retired dataset.",
+   "boundary_note": "Restoring a failed feed is sync; deciding how an alert rule behaves when data is absent is alerts."
+  },
+  {
+   "family_id": "alerts-f11",
+   "name": "Anomaly detection baselines and sensitivity",
+   "summary": "Dynamic-baseline alerts are distorted by holiday peaks, promotions, short history, model resets or overly high sensitivity, producing noise or silence.",
+   "boundary_note": "The detected values are correct; the issue is how the anomaly alert's baseline is learned and tuned."
+  },
+  {
+   "family_id": "alerts-f12",
+   "name": "Rule scope, segment filters and per-group evaluation",
+   "summary": "Rules are scoped with renamed filter values, frozen segments, missing per-store grouping, closed stores or filters not inherited from dashboards, so they watch the wrong population.",
+   "boundary_note": "This is the alert rule's own scope; filters that fail to apply on a dashboard are render and access restrictions are perm."
+  },
+  {
+   "family_id": "alerts-f13",
+   "name": "Recipient routing and escalation",
+   "summary": "Alerts reach the wrong people or no one because of static recipients after staff changes, mis-ordered severity routes, wrong routing placeholders, recipient limits, stale push tokens or acknowledgements triggered by link scanners.",
+   "boundary_note": "Deciding who receives an alert notification is alerts; who may view data or dashboards is perm."
+  },
+  {
+   "family_id": "alerts-f14",
+   "name": "Alert schedules, active hours and time zones",
+   "summary": "Active hours, digests and holiday handling in alert rules use the wrong time zone, ignore daylight saving changes or cannot follow each store's local time.",
+   "boundary_note": "These are time settings inside alert rules and channels; the workspace's own default time zone and locale settings are workspace_admin."
+  }
+ ],
+ "related_groups": [
+  {
+   "group_id": "alerts-g01",
+   "family_id": "alerts-f03",
+   "shared_root_cause": "Hourly rules evaluated at minute :00, but the customer's point-of-sale batch for the previous hour lands between :05 and :10, so the latest hour was evaluated while still partial."
+  },
+  {
+   "group_id": "alerts-g02",
+   "family_id": "alerts-f04",
+   "shared_root_cause": "Maintenance and mute windows created from the schedule editor were saved in UTC instead of the rule's configured time zone, shifting them by the store's UTC offset."
+  },
+  {
+   "group_id": "alerts-g03",
+   "family_id": "alerts-f05",
+   "shared_root_cause": "Cloning a dashboard also cloned the alert rules attached to its widgets, so each rule existed twice with the same recipients."
+  },
+  {
+   "group_id": "alerts-g04",
+   "family_id": "alerts-f08",
+   "shared_root_cause": "The chat app's access token was revoked on the customer's chat workspace side (app reinstalled or removed during cleanup), so alert posts were rejected until the channel was reconnected."
+  },
+  {
+   "group_id": "alerts-g05",
+   "family_id": "alerts-f09",
+   "shared_root_cause": "The custom alert webhook payload template inserted text fields without JSON escaping, so quotes or line breaks in names and descriptions produced invalid JSON."
+  },
+  {
+   "group_id": "alerts-g06",
+   "family_id": "alerts-f10",
+   "shared_root_cause": "The rules used the default no-data behaviour of treating an empty evaluation window as OK, so a source that stopped reporting entirely never triggered the threshold."
+  },
+  {
+   "group_id": "alerts-g07",
+   "family_id": "alerts-f11",
+   "shared_root_cause": "The anomaly baseline's training window covered the holiday peak, inflating both the expected level and its variance for the following weeks."
+  },
+  {
+   "group_id": "alerts-g08",
+   "family_id": "alerts-f06",
+   "shared_root_cause": "Rules had a single threshold with no recovery threshold or pending period, so a metric hovering around the boundary opened and resolved the alert repeatedly."
+  },
+  {
+   "group_id": "alerts-g09",
+   "family_id": "alerts-f14",
+   "shared_root_cause": "Rule active hours were stored as fixed UTC offsets captured at creation, so they shifted by an hour when daylight saving time began or ended."
+  }
+ ],
+ "tickets": [
+  {
+   "key": "alerts-001",
+   "family_id": "alerts-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Margin values were correct; the rule compared a fraction against a whole-number threshold, so this is alerts rather than data_quality.",
+   "category": "alerts",
+   "subject": "Gross margin alert fires every hour",
+   "description": "Customer created a rule 'gross margin below 25' and has received an alert every hour since, even though their dashboard shows margin around 31%.",
+   "resolution_notes": "Margin is stored as a fraction (0.31), so every value was below 25. Changed the threshold to 0.25 and we updated the rule editor to show the metric's unit next to the threshold field. The alert stopped, and a test with a 0.35 threshold fired once as expected.",
+   "tags": [
+    "threshold-units",
+    "margin-alert",
+    "alert-noise"
+   ],
+   "created_at": "2025-01-08",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-002",
+   "family_id": "alerts-f01",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Low stock alert never triggers",
+   "description": "A store ran out of a top-selling item over the weekend and nobody was notified, although the customer has a low-stock alert on that product family set to 20 units.",
+   "resolution_notes": "The rule's operator was 'greater than 20' instead of 'less than 20'. Stock had been above 20 since the rule was created, so the rule sat in the alerting state after a single notification months earlier, and the stock-out actually moved it back to OK. Corrected the operator to 'less than'. Confirmed the alert fired once when a test store's stock was set to 15.",
+   "tags": [
+    "comparison-operator",
+    "low-stock",
+    "missed-alert"
+   ],
+   "created_at": "2025-02-17",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-003",
+   "family_id": "alerts-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Sales amounts were correctly stored in local currency; the rule's evaluation currency setting was wrong, so this is alerts.",
+   "category": "alerts",
+   "subject": "Daily sales alert constantly firing for Tokyo stores only",
+   "description": "Customer's 'daily sales above 2,000,000' alert, intended to flag unusually high days, fires every day for their Japanese stores and never for European ones.",
+   "resolution_notes": "The rule evaluated each store in its local currency, so a normal day in yen exceeded a threshold that was meant in US dollars. Set the rule to evaluate the converted reporting-currency amount. Japanese stores stopped triggering on normal days, and a replay of last month flagged only the two genuinely high days.",
+   "tags": [
+    "evaluation-currency",
+    "multi-currency",
+    "threshold-config"
+   ],
+   "created_at": "2025-06-11",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-004",
+   "family_id": "alerts-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Refund alert didn't fire at exactly 50 refunds",
+   "description": "Agent summary: customer's refund spike rule is 'refunds greater than 50 per hour'. One hour had exactly 50 refunds and no alert went out; they expected one.",
+   "resolution_notes": "'Greater than' excludes the threshold value itself. The customer wanted the boundary included, so changed the operator to 'greater than or equal to'. A test with a 50-refund sample hour now triggers the alert.",
+   "tags": [
+    "comparison-operator",
+    "threshold-boundary",
+    "refunds"
+   ],
+   "created_at": "2025-09-04",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-005",
+   "family_id": "alerts-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Sales increase alert goes off every Monday",
+   "description": "Customer's 'sales up more than 40% vs previous day' alert fires every Monday morning for their high-street stores.",
+   "resolution_notes": "Most of those stores are closed or have very short hours on Sundays, so comparing Monday with the previous day always shows a large increase. Changed the comparison baseline to the same weekday in the previous week. No Monday alerts fired the following two weeks, while a genuine Thursday spike was still caught.",
+   "tags": [
+    "comparison-baseline",
+    "percent-change",
+    "weekday-pattern"
+   ],
+   "created_at": "2026-01-26",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-006",
+   "family_id": "alerts-f01",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Threshold reset to 0 after renaming a rule",
+   "description": "Customer renamed several inventory variance rules to follow a new naming scheme, and those rules immediately started firing for almost every store.",
+   "resolution_notes": "A defect in the rule editor saved the threshold as 0 when only the name was edited, and because these rules alert on variance above the threshold, any store with even one unit of variance matched. Fixed the editor to preserve unchanged fields and restored the original thresholds from rule history. Renaming a test rule now leaves its threshold intact, and the false alerts stopped.",
+   "tags": [
+    "rule-editor",
+    "threshold-reset",
+    "regression"
+   ],
+   "created_at": "2026-07-09",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-007",
+   "family_id": "alerts-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Daily revenue alert firing in the middle of the afternoon",
+   "description": "Customer's 'daily revenue below 10,000' alert keeps going off at odd times like 14:00, when the day is far from finished.",
+   "resolution_notes": "The rule used a rolling 24-hour window evaluated hourly, so at 14:00 it compared the last 24 hours, which could dip below the threshold after a slow previous evening. The customer wanted calendar-day revenue, so switched the rule to calendar-day aggregation evaluated after closing time. Over the next week it fired only on one genuinely weak day.",
+   "tags": [
+    "rolling-window",
+    "calendar-day",
+    "evaluation-window"
+   ],
+   "created_at": "2025-03-06",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-008",
+   "family_id": "alerts-f02",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Average basket alert never fires",
+   "description": "Customer set up an alert for average basket value dropping below 35 across all stores. Their dashboard showed it at 31 on several days, but no alert was sent.",
+   "resolution_notes": "The rule's aggregation was set to 'sum' across stores, so it compared the total of all stores' averages (in the thousands) with 35. Changed the aggregation to a transaction-weighted average to match the dashboard tile. Replaying the past month, the rule fired on the same three days the dashboard showed below 35.",
+   "tags": [
+    "aggregation-type",
+    "average-basket",
+    "missed-alert"
+   ],
+   "created_at": "2025-04-24",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-009",
+   "family_id": "alerts-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Conversion alert triggered by a handful of sessions",
+   "description": "The web team gets 'conversion rate 0%' alerts in the early morning. They say these are meaningless because hardly anyone is on the site at that time.",
+   "resolution_notes": "The rule evaluated 15-minute windows with no minimum sample size, so three sessions with no orders produced 0%. Added a condition requiring at least 50 sessions in the window before evaluating. Early-morning false alerts stopped, and a daytime test with low conversion still fired.",
+   "tags": [
+    "minimum-sample",
+    "conversion-rate",
+    "small-window"
+   ],
+   "created_at": "2025-07-17",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-010",
+   "family_id": "alerts-f02",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Both numbers were correct for their own windows, so this is an alert window choice rather than a data_quality calculation error.",
+   "category": "alerts",
+   "subject": "Alert says 412 orders but dashboard says 390 for the same hour",
+   "description": "Customer compared an hourly order-volume alert with the dashboard and the numbers never match. They think one of them is miscalculating.",
+   "resolution_notes": "The alert evaluates the 60 minutes ending at evaluation time (for example 10:07-11:07), while the dashboard shows calendar hours (10:00-11:00). Set the rule to align its window to the calendar hour and included the window start and end in the alert message. The next alerts matched the dashboard values exactly.",
+   "tags": [
+    "window-alignment",
+    "alert-message",
+    "hourly-orders"
+   ],
+   "created_at": "2025-11-19",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-011",
+   "family_id": "alerts-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The workspace week setting was already correct; the rule had its own week definition, so this stays in alerts rather than workspace_admin.",
+   "category": "alerts",
+   "subject": "Week-to-date target alert fires every Monday morning",
+   "description": "Customer's 'week-to-date sales below 20% of weekly target' alert fires every Monday morning, even though their reporting week starts on Monday.",
+   "resolution_notes": "The rule had been created before the workspace switched to Monday-start weeks and kept its own Sunday-start week setting, so on Monday morning it was comparing a nearly complete week with only a day of sales counted from Sunday. Changed the rule to inherit the workspace fiscal week. Monday morning alerts stopped the following week.",
+   "tags": [
+    "week-start",
+    "week-to-date",
+    "rule-settings"
+   ],
+   "created_at": "2026-03-23",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-012",
+   "family_id": "alerts-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Checkout errors alert arrives two hours late",
+   "description": "Customer's alert for payment failures above 5% should trigger after the condition lasts 30 minutes, but last Saturday it arrived about two hours after failures started.",
+   "resolution_notes": "The rule evaluated only once an hour, and a 'for 30 minutes' condition needs two consecutive breaching evaluations, so the earliest possible alert was over an hour after onset and longer depending on timing. Changed evaluation frequency to every 5 minutes. A simulated failure spike produced an alert 31 minutes after onset.",
+   "tags": [
+    "evaluation-frequency",
+    "pending-duration",
+    "late-alert"
+   ],
+   "created_at": "2026-06-04",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-013",
+   "family_id": "alerts-f03",
+   "related_group": "alerts-g01",
+   "challenge": null,
+   "classification_rationale": "Data arrived on its usual schedule, so this is not sync; the rule evaluated before the data landed.",
+   "category": "alerts",
+   "subject": "False 'revenue dropped to zero' alerts at the top of every hour",
+   "description": "Customer receives a 'store revenue is 0 this hour' alert for many stores at roughly :00 most hours. When they look at the dashboard a few minutes later, revenue for that hour is normal.",
+   "resolution_notes": "The rule evaluated at :00, but the customer's point-of-sale batch for the previous hour lands between :05 and :10, so the hour was empty at evaluation time. Added a 15-minute evaluation delay to the rule. Over the next two days there were no zero-revenue alerts while normal hourly data was present.",
+   "tags": [
+    "evaluation-delay",
+    "partial-data",
+    "false-positive"
+   ],
+   "created_at": "2025-02-20",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-014",
+   "family_id": "alerts-f03",
+   "related_group": "alerts-g01",
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Order spike alert silent during flash sale",
+   "description": "During a flash sale, the customer's dashboard later showed hourly orders four times the normal level, but the 'orders above 2,000 per hour' alert never went off.",
+   "resolution_notes": "The hourly rule ran at :00 while the previous hour's orders were still loading, so each evaluation saw only a fraction of the hour and stayed below 2,000. Configured a 15-minute evaluation delay so the full hour is present. Replaying the flash-sale hours with the new delay triggered the alert for three of them.",
+   "tags": [
+    "evaluation-delay",
+    "missed-alert",
+    "flash-sale"
+   ],
+   "created_at": "2025-03-13",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-015",
+   "family_id": "alerts-f03",
+   "related_group": "alerts-g01",
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The final values on the dashboard were correct; the alert message showed an intermediate value because it evaluated early, so this is alerts rather than data_quality.",
+   "category": "alerts",
+   "subject": "Value in alert message much lower than the dashboard",
+   "description": "Customer says the numbers quoted in their hourly sales alerts are often 30-60% lower than what the dashboard shows for the same hour later in the day.",
+   "resolution_notes": "The rule evaluated at the top of the hour, before the point-of-sale batch for that hour had finished loading, so the alert captured a partial total. Added a 15-minute evaluation delay aligned with the batch arrival. Alert values now match the dashboard for the same hour.",
+   "tags": [
+    "evaluation-delay",
+    "partial-data",
+    "alert-message"
+   ],
+   "created_at": "2025-04-02",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-016",
+   "family_id": "alerts-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Nightly 'daily sales below target' alert for the online shop",
+   "description": "Customer's online shop triggers the 'daily sales below target' alert just after midnight almost every night, but the next morning's report shows the target was met.",
+   "resolution_notes": "The online shop's final daily figures come from a settlement file that arrives around 02:00, but the rule evaluated at 00:15. Changed the rule to evaluate once the dataset's freshness marker shows the day is complete, with 03:00 as the latest fallback. The false nightly alerts stopped and a below-target test day still alerted.",
+   "tags": [
+    "dataset-freshness",
+    "daily-rule",
+    "settlement-file"
+   ],
+   "created_at": "2025-08-28",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-017",
+   "family_id": "alerts-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The delayed sync itself was a separate sync matter; this ticket covers the burst of stale alerts the rule produced afterwards.",
+   "category": "alerts",
+   "subject": "Burst of six alerts at once after data caught up",
+   "description": "After a delayed data source caught up at 15:00, the customer's team received six 'low hourly sales' alerts in one minute, all for hours earlier that day.",
+   "resolution_notes": "When the backlog loaded, the rule evaluated each newly completed hour and notified for every one, even though they were hours old. Enabled the rule option to skip notifications for periods older than two hours and to send a single summary instead. A replayed backfill produced one summary message.",
+   "tags": [
+    "stale-alerts",
+    "backfill",
+    "alert-burst"
+   ],
+   "created_at": "2026-04-16",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-018",
+   "family_id": "alerts-f03",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Delivery delay alerts unreliable because carrier data arrives at random times",
+   "description": "Customer's carrier status data arrives anywhere between 10 and 50 minutes past the hour, so their 'late deliveries above 5%' alert sometimes evaluates on incomplete data and sometimes doesn't.",
+   "resolution_notes": "Fixed-time evaluation cannot adapt to irregular arrival. As a workaround we set a 55-minute evaluation delay, which makes alerts reliable but later than ideal; evaluation triggered by data arrival is on the roadmap and the customer was added to its early access list. Since the change there have been no false alerts in two weeks.",
+   "tags": [
+    "evaluation-delay",
+    "irregular-arrival",
+    "carrier-data"
+   ],
+   "created_at": "2026-08-20",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-019",
+   "family_id": "alerts-f04",
+   "related_group": "alerts-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alerts fired during planned overnight store maintenance",
+   "description": "Customer scheduled a maintenance window from 01:00 to 04:00 local time for a till system upgrade, but the store teams still got 'no transactions' alerts at 01:30.",
+   "resolution_notes": "The maintenance window was saved in UTC rather than the rule's time zone (UTC+2), so it ran from 03:00 to 06:00 local. Fixed the schedule editor to store windows in the rule's time zone and corrected the customer's existing windows. A test window created afterwards suppressed alerts at the intended local time.",
+   "tags": [
+    "maintenance-window",
+    "timezone-offset",
+    "suppression"
+   ],
+   "created_at": "2025-05-08",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-020",
+   "family_id": "alerts-f04",
+   "related_group": "alerts-g02",
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Real outage at 10:00 produced no alerts",
+   "description": "A payment terminal outage at 10:00 went unnoticed for an hour. The customer's rules were active and breached, but no notifications were sent.",
+   "resolution_notes": "A recurring early-morning mute window had been saved in UTC instead of the rule's time zone (UTC-5), so it actually suppressed alerts from 09:00 to 11:00 local time. Corrected the window to the intended local hours, and the schedule editor now stores windows in the rule's time zone. A test breach at 10:00 the next day alerted immediately.",
+   "tags": [
+    "mute-window",
+    "missed-alert",
+    "timezone-offset"
+   ],
+   "created_at": "2025-05-15",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-021",
+   "family_id": "alerts-f04",
+   "related_group": "alerts-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Sunday stocktake mute ends before the stocktake does",
+   "description": "Customer mutes stock alerts for their monthly Sunday stocktake from 18:00 to 23:00, but alerts start arriving around 21:00.",
+   "resolution_notes": "The mute schedule had been stored in UTC, two hours off from the rule's local time zone, so it ended at 21:00 local. Re-saved the mute in the rule's time zone after the editor fix. During the next stocktake no alerts were sent until 23:00.",
+   "tags": [
+    "mute-window",
+    "stocktake",
+    "timezone-offset"
+   ],
+   "created_at": "2025-06-01",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-022",
+   "family_id": "alerts-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Snoozing one alert silenced every rule",
+   "description": "A regional manager snoozed a noisy alert for 24 hours on Friday. On Saturday a genuine stock-out alert from another rule never reached anyone.",
+   "resolution_notes": "The alert list had a 'select all' checkbox already ticked from a previous filter, so the bulk snooze applied to all 46 rules. Ended the snoozes, and the bulk action now shows a confirmation listing how many rules will be affected. The manager confirmed single-rule snoozes now affect only that rule.",
+   "tags": [
+    "snooze",
+    "bulk-action",
+    "missed-alert"
+   ],
+   "created_at": "2025-10-09",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-023",
+   "family_id": "alerts-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Muted alert stayed muted for three weeks",
+   "description": "Customer muted an inventory variance alert 'until resolved' expecting it to come back in a few days. They only realised three weeks later that it was still muted.",
+   "resolution_notes": "'Mute until resolved' stays active while the condition remains breached, and the variance had never dropped below the threshold. Replaced it with a 72-hour mute and enabled the weekly 'muted rules' summary for the admin. The rule is active again and the admin received the first summary.",
+   "tags": [
+    "mute-until-resolved",
+    "muted-rules",
+    "inventory-variance"
+   ],
+   "created_at": "2026-02-12",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-024",
+   "family_id": "alerts-f04",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "200 store alerts at once when the till feed went down",
+   "description": "When the point-of-sale feed for the whole chain paused for 20 minutes, every store manager received a 'no sales' alert simultaneously, around 200 messages in total.",
+   "resolution_notes": "There was a chain-wide 'feed delayed' rule, but store-level rules were not configured to be suppressed while it was firing. Set the store rules to depend on the feed rule so they are held back during a feed outage. In a test pause only the single feed alert was sent.",
+   "tags": [
+    "dependency-suppression",
+    "alert-storm",
+    "feed-outage"
+   ],
+   "created_at": "2026-09-10",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-025",
+   "family_id": "alerts-f05",
+   "related_group": "alerts-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Every alert email now arrives twice",
+   "description": "Since Thursday, the customer's regional team receives two identical emails for every sales alert, a few seconds apart.",
+   "resolution_notes": "On Thursday the team cloned their regional dashboard to make a draft version, and cloning also copied the alert rules attached to its widgets, so each rule now existed twice. Deleted the cloned rules after confirming they were unchanged copies, and dashboard cloning now asks whether to copy alert rules (default: no). The next alerts arrived once each.",
+   "tags": [
+    "duplicate-notifications",
+    "dashboard-clone",
+    "cloned-rules"
+   ],
+   "created_at": "2025-01-23",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-026",
+   "family_id": "alerts-f05",
+   "related_group": "alerts-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Chat channel gets each stock alert two times",
+   "description": "The store operations channel in the customer's chat tool shows every low-stock alert posted twice by our app.",
+   "resolution_notes": "The alert rules list showed two identical rules for each product family, one attached to the original stock dashboard and one to a copy an analyst created last week; copying a dashboard duplicated its attached rules. Removed the copies and pointed the analyst to the new clone option that leaves rules behind. Single posts confirmed on the next three alerts.",
+   "tags": [
+    "duplicate-notifications",
+    "chat-channel",
+    "cloned-rules"
+   ],
+   "created_at": "2025-02-06",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-027",
+   "family_id": "alerts-f05",
+   "related_group": "alerts-g03",
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Old region's alerts doubled after setting up the new region",
+   "description": "Customer created the dashboard for their new West region by copying the East region dashboard, choosing to include its alerts, and then editing the dashboard filters. Now East managers get every East alert twice, and West has no alerts at all.",
+   "resolution_notes": "The cloned rules kept their own East region scope and East recipients, because editing a dashboard's filters does not change the scope of rules attached to it, so East alerts were duplicated and nothing watched West. Re-scoped the copied rules to the West region and West recipients instead of deleting them. East managers now get one alert each, and a West test breach alerted the West managers.",
+   "tags": [
+    "cloned-rules",
+    "region-setup",
+    "rule-scope"
+   ],
+   "created_at": "2025-03-31",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-028",
+   "family_id": "alerts-f05",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Same alert repeated every 10 minutes",
+   "description": "Customer says they get the same 'returns rate above 8%' alert over and over, every 10 minutes, for hours, and assumed it was a duplicate bug.",
+   "resolution_notes": "The rule's re-notify interval was set to 10 minutes while the condition stays breached, which is working as configured. Changed re-notification to every 4 hours and enabled a resolved message so the team knows when it clears. The customer confirmed they now get one alert plus a reminder only if the issue persists.",
+   "tags": [
+    "renotify-interval",
+    "repeat-notifications",
+    "returns-rate"
+   ],
+   "created_at": "2025-07-24",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-029",
+   "family_id": "alerts-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Store managers get two emails per alert, area managers get one",
+   "description": "Agent summary: for the same rule, store managers receive duplicate emails while area managers receive one. The rule notifies both the 'Store Managers' group and several individual managers.",
+   "resolution_notes": "Several store managers were listed both individually and through the group, and recipients were not de-duplicated by address. Removed the individual entries and deployed a change that de-duplicates recipients across groups and individuals at send time. Each manager now receives one email per alert.",
+   "tags": [
+    "recipient-overlap",
+    "duplicate-notifications",
+    "email-channel"
+   ],
+   "created_at": "2025-12-11",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-030",
+   "family_id": "alerts-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "All alerts sent twice for about an hour on Saturday",
+   "description": "Customer noticed every alert between 14:00 and 15:00 on Saturday was sent twice, across email and chat. Before and after that it was normal.",
+   "resolution_notes": "During a scheduler failover both the old and new evaluator instances ran for about an hour, and each sent notifications. Added a lock on rule and period so only one evaluator can process a rule for a given period, plus a send-side dedup key. A failover test in staging produced single notifications.",
+   "tags": [
+    "scheduler-failover",
+    "double-evaluation",
+    "dedup-key"
+   ],
+   "created_at": "2026-05-30",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-031",
+   "family_id": "alerts-f06",
+   "related_group": "alerts-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Stock alert opens and closes 30 times a day",
+   "description": "Customer's 'stock below 100 units' alert for their central distribution site toggles between firing and resolved roughly 30 times per day, flooding the team with messages.",
+   "resolution_notes": "Stock hovered around 100 as picks and replenishments alternated, and the rule had no separate recovery threshold. Added a recovery threshold of 120 units and a 15-minute pending period. The rule now fires once when stock drops and resolves only after a real replenishment; the next day produced two notifications in total.",
+   "tags": [
+    "flapping",
+    "recovery-threshold",
+    "stock-level"
+   ],
+   "created_at": "2025-04-03",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-032",
+   "family_id": "alerts-f06",
+   "related_group": "alerts-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "On-call paged 14 times overnight for the same order backlog",
+   "description": "The customer's on-call engineer was paged 14 times between midnight and 6:00 by the unfulfilled orders alert. The backlog was around the threshold all night and never got worse.",
+   "resolution_notes": "The rule fired at 500 and resolved at 499 with no hysteresis, so small fluctuations created a page each time. Set a recovery threshold of 400 and required the breach to last 10 minutes before paging. The following night produced one page when the backlog genuinely rose.",
+   "tags": [
+    "flapping",
+    "hysteresis",
+    "order-backlog"
+   ],
+   "created_at": "2025-10-30",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-033",
+   "family_id": "alerts-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Checkout latency alert jumps on and off",
+   "description": "Customer's web checkout latency alert, evaluated per minute, goes on and off many times an hour during normal trading.",
+   "resolution_notes": "Per-minute latency values are naturally noisy, so single slow minutes repeatedly crossed the threshold. Changed the rule to evaluate a 10-minute rolling average and kept per-minute values available on the dashboard. The alert now fires only for sustained slowdowns, confirmed during a planned load test.",
+   "tags": [
+    "flapping",
+    "metric-smoothing",
+    "rolling-average"
+   ],
+   "created_at": "2026-01-15",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-034",
+   "family_id": "alerts-f06",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alert resolves itself while the problem is still happening",
+   "description": "A 'card payments failing' alert keeps resolving and re-opening even though payment failures continued the whole time, according to the customer.",
+   "resolution_notes": "The payment data arrived in bursts, and evaluation windows with no data were treated as a recovery, closing the alert until the next burst re-opened it. Set the rule to keep its current state when a window has no data. The alert now stays open until failures actually drop below the threshold.",
+   "tags": [
+    "flapping",
+    "data-gaps",
+    "auto-resolve"
+   ],
+   "created_at": "2026-03-19",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-035",
+   "family_id": "alerts-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Short promo spikes page the team for nothing",
+   "description": "Customer's 'refund requests above 30 per 5 minutes' rule pages the team whenever a promotion email goes out, but the spike always fades within a few minutes.",
+   "resolution_notes": "The rule fired on the first breaching evaluation, so brief, expected spikes triggered pages. Added a 15-minute pending period so a breach must persist before notifying. During the next two campaign emails the rule stayed pending and cleared without paging, and a longer test breach still alerted.",
+   "tags": [
+    "pending-period",
+    "promo-spike",
+    "alert-noise"
+   ],
+   "created_at": "2026-06-18",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-036",
+   "family_id": "alerts-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alert keeps bouncing between warning and critical",
+   "description": "Customer's shrinkage alert sends a stream of 'escalated to critical' and 'downgraded to warning' messages through the day.",
+   "resolution_notes": "The warning and critical thresholds were set at 90% and 92%, so normal variation crossed between severities constantly. Widened the gap (warning at 90%, critical at 97%) and enabled severity hysteresis so downgrades need the value to fall 2 points below the boundary. Severity changes dropped from dozens a day to one or two.",
+   "tags": [
+    "severity-levels",
+    "threshold-gap",
+    "flapping"
+   ],
+   "created_at": "2026-10-01",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-037",
+   "family_id": "alerts-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "These are alert notification emails; password-reset or sign-in emails would be auth.",
+   "category": "alerts",
+   "subject": "Alert emails quarantined by customer's mail gateway",
+   "description": "Customer's IT team reports our alert emails started landing in quarantine on Monday with the reason 'sender authentication failed'. Other emails from us are fine.",
+   "resolution_notes": "Alert emails had moved to a new sending subdomain, alerts.example.com, which was missing DKIM signing on our side, so strict receiving policies quarantined them. Enabled and published DKIM for the subdomain. The customer's gateway accepted the next test alert with authentication passing, and no exemption was needed on their side.",
+   "tags": [
+    "dkim",
+    "email-quarantine",
+    "sender-authentication"
+   ],
+   "created_at": "2025-05-22",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-038",
+   "family_id": "alerts-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alerts to store-ops distribution list bounce",
+   "description": "Alerts addressed to the customer's store-ops@example.org list never arrive. Our delivery log shows 'rejected: sender not authorized to post to this list'.",
+   "resolution_notes": "The distribution list only accepts posts from internal senders. The customer's mail admin added our alerts sending address to that list's permitted senders only, without changing any other mail policy. Test alerts reached all list members afterwards.",
+   "tags": [
+    "distribution-list",
+    "email-bounce",
+    "permitted-senders"
+   ],
+   "created_at": "2025-08-14",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-039",
+   "family_id": "alerts-f07",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Missing alert emails belong to alerts; a missing password-reset email would be auth.",
+   "category": "alerts",
+   "subject": "One manager stopped receiving alert emails",
+   "description": "A regional manager says alert emails stopped arriving three weeks ago, while colleagues on the same rules still get them. Nothing in spam.",
+   "resolution_notes": "Her mailbox had been full for a week, so our sends bounced repeatedly and the address was added to the bounce suppression list. After she confirmed the mailbox was cleared, removed the address from suppression and sent a test alert, which she received. Admins now see suppressed recipients flagged in the rule's recipient list.",
+   "tags": [
+    "bounce-suppression",
+    "email-channel",
+    "missing-notifications"
+   ],
+   "created_at": "2025-11-12",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-040",
+   "family_id": "alerts-f07",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alert emails arrive up to an hour after the alert",
+   "description": "Customer's team sees alerts in the app immediately, but the matching emails come in batches, sometimes 50 minutes later.",
+   "resolution_notes": "The email channel had been switched to hourly digest mode by a colleague to reduce inbox noise, which groups alerts into one email per hour. Set critical-severity alerts to send immediately while keeping warnings in the digest. Critical test alerts now arrive within a minute.",
+   "tags": [
+    "digest-mode",
+    "email-delay",
+    "severity-routing"
+   ],
+   "created_at": "2026-02-19",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-041",
+   "family_id": "alerts-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alert emails show '{{metric.vlaue}}' instead of the number",
+   "description": "Customer customised their alert email template and now every email shows the literal text {{metric.vlaue}} where the metric value should be.",
+   "resolution_notes": "The template variable was misspelled, and unknown variables were rendered as literal text. Corrected it to {{metric.value}} and the template editor now validates variable names before saving. The next alert email showed the correct value.",
+   "tags": [
+    "email-template",
+    "template-variables",
+    "alert-message"
+   ],
+   "created_at": "2026-05-14",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-042",
+   "family_id": "alerts-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Broken image instead of trend chart in alert emails",
+   "description": "Alert emails at a customer show a broken image icon where the small trend chart should be. Recipients outside the office see it fine.",
+   "resolution_notes": "The trend chart was loaded from a remote link, and the customer's internal mail client blocks remote images by policy. Switched their email channel to embed the chart image in the message instead of linking it. Office recipients now see the chart in test alerts.",
+   "tags": [
+    "email-images",
+    "embedded-chart",
+    "remote-content"
+   ],
+   "created_at": "2026-09-24",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-043",
+   "family_id": "alerts-f08",
+   "related_group": "alerts-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alerts stopped posting to #store-ops",
+   "description": "Customer reports no alerts have appeared in their #store-ops chat channel since Monday. The channel delivery log shows 'token_revoked'.",
+   "resolution_notes": "The customer's chat workspace admin reinstalled our app while troubleshooting another integration, which revoked the token we were using. Reconnected the chat channel from alert settings with the new installation. A test alert posted to #store-ops immediately, and pending alerts were re-sent.",
+   "tags": [
+    "chat-channel",
+    "token-revoked",
+    "reconnect-integration"
+   ],
+   "created_at": "2025-06-05",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-044",
+   "family_id": "alerts-f08",
+   "related_group": "alerts-g04",
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alerts arrive by email but not in our chat tool",
+   "description": "Since Tuesday the customer gets alerts by email and in-app as usual, but nothing in their chat tool. They didn't change any alert settings.",
+   "resolution_notes": "The chat delivery log showed authorization failures starting Tuesday, when the customer's chat admin reinstalled the app and invalidated the previous token. Reconnected the channel in alert settings. Chat posts resumed with the next alert, and we now email rule owners when a chat channel loses authorization.",
+   "tags": [
+    "chat-channel",
+    "token-revoked",
+    "channel-health"
+   ],
+   "created_at": "2025-06-26",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-045",
+   "family_id": "alerts-f08",
+   "related_group": "alerts-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Chat test message fails with 'not_authed' after app cleanup",
+   "description": "The customer's IT team cleaned up unused apps in their chat tool last week. Now sending a test alert to chat fails with 'not_authed'.",
+   "resolution_notes": "Our app had been removed during the cleanup, revoking its token. The chat admin re-approved the app and the customer reconnected the channel in alert settings. The test alert posted successfully and alerts have been delivered since.",
+   "tags": [
+    "chat-channel",
+    "app-removed",
+    "not-authed"
+   ],
+   "created_at": "2025-09-25",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-046",
+   "family_id": "alerts-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Can't send alerts to private chat channel",
+   "description": "Customer created a private channel for loss-prevention alerts. Selecting it in alert settings and sending a test returns 'channel_not_found'.",
+   "resolution_notes": "Our app can only post to private channels it has been invited to. The customer invited the app to the loss-prevention channel, and the test alert then posted correctly. Added this step to the channel setup help text.",
+   "tags": [
+    "private-channel",
+    "chat-channel",
+    "channel-not-found"
+   ],
+   "created_at": "2025-12-18",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-047",
+   "family_id": "alerts-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alerts lost after old chat channel was archived",
+   "description": "Agent summary: the customer reorganised their chat channels and archived #ops-alerts-old. Rules still pointing to it have silently stopped delivering.",
+   "resolution_notes": "Posts to an archived channel are rejected, and the affected rules still referenced it. Updated the 11 affected rules to the new channel and enabled the channel-health warning that flags archived destinations on the rule list. Test alerts from each rule reached the new channel.",
+   "tags": [
+    "archived-channel",
+    "chat-channel",
+    "rule-destinations"
+   ],
+   "created_at": "2026-04-30",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-048",
+   "family_id": "alerts-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Chat alert cut off halfway through the store list",
+   "description": "When many stores breach at once, the customer's chat alert stops mid-sentence partway through the store list, so they can't see which other stores are affected.",
+   "resolution_notes": "The message included every breaching store and exceeded the chat tool's message length limit, so it was truncated. Changed the chat format to show the top 10 stores with a count of the rest and a link to the full list in the app. A test with 60 breaching stores posted a complete message.",
+   "tags": [
+    "message-length",
+    "chat-channel",
+    "alert-format"
+   ],
+   "created_at": "2026-08-06",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-049",
+   "family_id": "alerts-f09",
+   "related_group": "alerts-g05",
+   "challenge": null,
+   "classification_rationale": "The failing webhook is an alert notification channel, not a product event subscription, so this is alerts rather than api.",
+   "category": "alerts",
+   "subject": "On-call tool rejects some alert webhooks as invalid JSON",
+   "description": "Customer's incident tool rejects a few of our alert webhooks with 400 'malformed JSON body'. It only seems to happen for one store, named The \"Corner\" Shop.",
+   "resolution_notes": "The customer's custom payload template inserted the store name with plain text substitution, so the double quotes in the name broke the JSON. Switched the template fields to the JSON-escaped variable form and added template validation with a sample containing special characters. Alerts for that store are now accepted by the incident tool.",
+   "tags": [
+    "alert-webhook",
+    "payload-template",
+    "json-escaping"
+   ],
+   "created_at": "2025-07-10",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-050",
+   "family_id": "alerts-f09",
+   "related_group": "alerts-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alert webhooks fail for rules with multi-line descriptions",
+   "description": "Agent summary: since the customer's team started writing longer rule descriptions with line breaks, alerts from those rules never reach their automation endpoint. Rules with one-line descriptions work.",
+   "resolution_notes": "The webhook payload template placed the description into a JSON string without escaping, so raw line breaks made the body invalid and the endpoint rejected it. Changed the template to use escaped variables and re-sent the failed alerts. All rules now deliver regardless of description formatting.",
+   "tags": [
+    "alert-webhook",
+    "payload-template",
+    "line-breaks"
+   ],
+   "created_at": "2025-08-21",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-051",
+   "family_id": "alerts-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alert webhook to incident tool returns 401",
+   "description": "Critical alerts stopped opening incidents in the customer's on-call tool on Thursday. The alert delivery log shows 401 Unauthorized for every attempt.",
+   "resolution_notes": "The customer had rotated the integration routing key in their on-call tool as part of a quarterly key rotation but had not updated it in our alert channel settings. Updated the stored key in the webhook channel and re-sent the failed alerts. Incidents were created for all of them and new alerts deliver normally.",
+   "tags": [
+    "alert-webhook",
+    "routing-key",
+    "key-rotation"
+   ],
+   "created_at": "2025-11-26",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-052",
+   "family_id": "alerts-f09",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Incidents never auto-resolve when the alert clears",
+   "description": "Our alerts open incidents in the customer's on-call tool correctly, but when the alert resolves the incident stays open and someone has to close it by hand.",
+   "resolution_notes": "The payload template built the dedup key from the alert timestamp, so the resolve event carried a different key from the trigger and the on-call tool treated it as a new event. Changed the dedup key to the rule ID plus group (store) ID. Triggered and cleared a test alert, and the incident resolved automatically.",
+   "tags": [
+    "alert-webhook",
+    "dedup-key",
+    "auto-resolve"
+   ],
+   "created_at": "2026-02-26",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-053",
+   "family_id": "alerts-f09",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": "These are alert notifications sent through an alert webhook channel; slow receivers of product event webhooks would be api.",
+   "category": "alerts",
+   "subject": "Duplicate tickets created by alert webhook to our automation",
+   "description": "Customer's automation platform receives our alert webhooks and opens a work ticket for each. Many alerts now produce two or three tickets, and our alert log shows timeouts for those deliveries.",
+   "resolution_notes": "Their automation ran the whole ticket creation before responding, taking over 10 seconds, so our alert channel timed out after 8 seconds and retried. Advised them to acknowledge immediately and create the ticket asynchronously, and to use the alert's dedup key to ignore repeats. After the change no timeouts or duplicate tickets were seen over a week.",
+   "tags": [
+    "alert-webhook",
+    "receiver-timeout",
+    "duplicate-tickets"
+   ],
+   "created_at": "2026-06-11",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-054",
+   "family_id": "alerts-f09",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The format change was a setting on the alert webhook channel, not a public API version change, so this is alerts rather than api.",
+   "category": "alerts",
+   "subject": "Our alert parser broke after changing a channel setting",
+   "description": "Customer's script that reads alert webhooks started failing with 'KeyError: metric_value' right after an admin changed the payload format on the alert channel.",
+   "resolution_notes": "The admin had switched the channel from the legacy payload to the current structured payload, where the value is nested under metric.value. Helped the customer update their parser to the structured format, which carries more context. Test alerts parsed correctly afterwards.",
+   "tags": [
+    "alert-webhook",
+    "payload-format",
+    "parser-update"
+   ],
+   "created_at": "2026-09-17",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-055",
+   "family_id": "alerts-f10",
+   "related_group": "alerts-g06",
+   "challenge": "negation_or_opposite",
+   "classification_rationale": "Restoring the stopped feed was handled as a sync issue; this ticket is about the alert rule not reacting to missing data.",
+   "category": "alerts",
+   "subject": "Till data stopped for nine hours and no alert fired",
+   "description": "The customer's point-of-sale feed stopped overnight and for most of the morning. Their 'hourly sales below 100' rule should have caught it, but nobody was alerted.",
+   "resolution_notes": "With no data at all, each evaluation window was empty, and the rule used the default setting of treating no data as OK. Changed the rule's no-data behaviour to 'alert' after two empty hourly windows. A test pause of a sandbox feed raised the alert after the second empty window.",
+   "tags": [
+    "no-data-handling",
+    "feed-outage",
+    "missed-alert"
+   ],
+   "created_at": "2025-01-30",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-056",
+   "family_id": "alerts-f10",
+   "related_group": "alerts-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Store offline all afternoon without any alert",
+   "description": "All terminals in one store lost their connection on Saturday afternoon. The customer expected their low-sales alert to fire for that store, but it stayed green.",
+   "resolution_notes": "No transactions arrived for the store, so its evaluation windows had no data, which the rule treated as OK by default. Set the rule's no-data state to alert for store groups during opening hours. A test with a store's sandbox feed paused triggered the alert within the configured window.",
+   "tags": [
+    "no-data-handling",
+    "store-offline",
+    "per-store-rule"
+   ],
+   "created_at": "2025-04-10",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-057",
+   "family_id": "alerts-f10",
+   "related_group": "alerts-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Why weren't we alerted when the web shop stopped reporting orders?",
+   "description": "After the web shop's order events stopped arriving for four hours, the e-commerce lead asked why the 'orders below 20 per hour' alert never went off.",
+   "resolution_notes": "The rule only evaluates when data points exist and treats empty windows as OK, so a complete stop never crossed the threshold. Switched the no-data behaviour to fire after one empty hour and added a separate data freshness rule on the order source. Both rules fired in a simulated outage test.",
+   "tags": [
+    "no-data-handling",
+    "freshness-rule",
+    "web-orders"
+   ],
+   "created_at": "2025-09-11",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-058",
+   "family_id": "alerts-f10",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "'No data' alerts every Sunday for stores that are closed",
+   "description": "Customer's store managers get 'no sales data' alerts every Sunday, but most of their stores are closed on Sundays.",
+   "resolution_notes": "The rule fired on missing data at all hours and did not know store opening hours. Linked the rule to the store opening-hours schedule so no-data is evaluated only while a store is open. The following Sunday produced alerts only for the two stores that trade on Sundays, and none of them were missing data.",
+   "tags": [
+    "no-data-handling",
+    "opening-hours",
+    "closed-stores"
+   ],
+   "created_at": "2025-10-23",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-059",
+   "family_id": "alerts-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Returns alert constantly in 'no data' state for small stores",
+   "description": "Customer's 'returns above 10 per day' rule shows 'No data' for most small stores and sends no-data notifications several times a week.",
+   "resolution_notes": "Small stores often have no returns at all, which produces no rows rather than a zero. Set the rule to treat missing data as zero for this metric, since an absence of returns is a real value. The no-data notifications stopped, and a test store with 12 returns still triggered the threshold.",
+   "tags": [
+    "no-data-handling",
+    "sparse-metric",
+    "treat-as-zero"
+   ],
+   "created_at": "2026-03-05",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-060",
+   "family_id": "alerts-f10",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Alerts went quiet after dataset migration",
+   "description": "Customer moved their sales reporting to a new dataset last month. Since then their margin alerts haven't fired once, and the rules show a grey 'No data' badge.",
+   "resolution_notes": "The rules still pointed at the archived dataset, which no longer receives data, and their no-data setting was OK, so nothing fired. Repointed the 14 rules to the new dataset after confirming metric names matched, and the rules list now warns when a rule's source dataset is archived. The rules evaluated normally on the next run and one fired for a real margin drop.",
+   "tags": [
+    "archived-dataset",
+    "rule-source",
+    "no-data-handling"
+   ],
+   "created_at": "2026-07-23",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-061",
+   "family_id": "alerts-f11",
+   "related_group": "alerts-g07",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Anomaly alerts flag normal January sales as unusually low",
+   "description": "Since 2 January, the customer's anomaly alerts fire almost daily saying store sales are unusually low. Their merchandising team says January trading is perfectly normal for them.",
+   "resolution_notes": "The anomaly baseline was trained on the previous eight weeks, which included the holiday peak, so the expected level for January was far too high. Excluded the holiday period from training and retrained using the same weeks of the prior year as a seasonal reference. The daily alerts stopped and a replay of the period flagged only one genuinely weak day.",
+   "tags": [
+    "anomaly-detection",
+    "baseline-training",
+    "holiday-season"
+   ],
+   "created_at": "2025-01-13",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-062",
+   "family_id": "alerts-f11",
+   "related_group": "alerts-g07",
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Anomaly detection missed a real sales drop in January",
+   "description": "A store's sales fell by about 40% for three days in mid-January because of a broken entrance door, but the customer's anomaly alerts stayed silent.",
+   "resolution_notes": "The baseline included the volatile holiday weeks, which made the expected range so wide that a 40% drop still looked normal. Removed the holiday period from the training window and retrained. Replaying the affected days with the new baseline produced an alert on the first day of the drop.",
+   "tags": [
+    "anomaly-detection",
+    "baseline-variance",
+    "missed-alert"
+   ],
+   "created_at": "2026-01-20",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-063",
+   "family_id": "alerts-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Too many anomaly alerts for small fluctuations",
+   "description": "Customer turned on anomaly alerts for every store and now gets dozens a day, many for differences of a few units.",
+   "resolution_notes": "Sensitivity was set to 'high', and with low-volume stores small absolute changes registered as statistically unusual. Lowered sensitivity to 'medium' and added a minimum absolute deviation of 500 in sales value. Alerts fell to two or three per day, which the customer reviewed and agreed were meaningful.",
+   "tags": [
+    "anomaly-sensitivity",
+    "minimum-deviation",
+    "alert-noise"
+   ],
+   "created_at": "2025-05-29",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-064",
+   "family_id": "alerts-f11",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "No anomaly alerts for the store that opened last week",
+   "description": "Customer opened a flagship store last week and expected anomaly alerts to cover it from day one, but the rule shows it as 'learning'.",
+   "resolution_notes": "Anomaly baselines need 14 days of history before they can judge what is unusual. As an interim measure we added a static threshold rule for the new store, set from the customer's opening forecast; the anomaly rule takes over automatically once learning completes. The static rule fired correctly during a slow opening-week afternoon.",
+   "tags": [
+    "anomaly-detection",
+    "learning-period",
+    "new-store"
+   ],
+   "created_at": "2025-09-08",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-065",
+   "family_id": "alerts-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Anomaly alerts every promotion weekend",
+   "description": "Customer gets 'unusually high sales' anomaly alerts every time they run a weekend promotion, which they plan weeks ahead.",
+   "resolution_notes": "The baseline had no knowledge of planned promotions, so expected uplift looked anomalous. Connected the rule to the customer's promotions calendar as known events, which widens the expected range during those periods. The next promotion weekend produced no alerts, while an unplanned spike on a normal weekday still did.",
+   "tags": [
+    "anomaly-detection",
+    "promotions-calendar",
+    "known-events"
+   ],
+   "created_at": "2026-04-09",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-066",
+   "family_id": "alerts-f11",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Anomaly alerts silent for two weeks after editing the metric",
+   "description": "Customer tweaked the definition of their 'net sales' metric to exclude gift cards, and afterwards their anomaly alerts on it didn't fire for two weeks, including during an obvious dip.",
+   "resolution_notes": "Changing a metric's definition resets its anomaly baseline, and the rule silently went back into a 14-day learning period. We now show a 'learning' badge and notify the rule owner when this happens, and we retrained the baseline from historical data recomputed with the new definition. The rule was active the same day, and replaying the dip produced an alert.",
+   "tags": [
+    "anomaly-detection",
+    "baseline-reset",
+    "metric-definition"
+   ],
+   "created_at": "2026-10-15",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-067",
+   "family_id": "alerts-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Northern region alerts stopped after region rename",
+   "description": "Customer renamed the region 'North' to 'Northern' in their store hierarchy. Since then, none of the region's sales alerts have fired, even on clearly bad days.",
+   "resolution_notes": "The rules filtered on the literal value 'North', which no longer matched any store, so they evaluated an empty population. Updated the rules to filter by the region's ID rather than its name and added a warning when a rule filter matches nothing. The rules evaluated the region's stores again and one fired the next day for a real dip.",
+   "tags": [
+    "rule-filter",
+    "renamed-value",
+    "empty-scope"
+   ],
+   "created_at": "2025-02-27",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-068",
+   "family_id": "alerts-f12",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "One store had zero sales all day but no alert",
+   "description": "A store's card terminals failed and it took almost no sales for a whole day. The customer's 'sales 30% below forecast' alert never fired.",
+   "resolution_notes": "The rule evaluated the total of all stores, and one store's loss barely moved the chain-wide figure. Enabled per-store evaluation ('for each store') so each store is compared with its own forecast. A replay of that day produced an alert for the affected store by mid-morning.",
+   "tags": [
+    "per-store-evaluation",
+    "rule-grouping",
+    "missed-alert"
+   ],
+   "created_at": "2025-06-19",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-069",
+   "family_id": "alerts-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "900 separate notifications during a chain-wide promotion glitch",
+   "description": "When a pricing mistake affected every store for an hour, the customer's per-store margin rule sent about 900 individual notifications to the same channel.",
+   "resolution_notes": "Per-store evaluation is correct for their use case, but each breaching store produced its own notification. Enabled notification grouping for the rule, which sends one summary listing affected stores when more than 10 breach in the same evaluation. A test with 50 breaching stores produced one summary message.",
+   "tags": [
+    "notification-grouping",
+    "per-store-evaluation",
+    "alert-storm"
+   ],
+   "created_at": "2025-11-06",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-070",
+   "family_id": "alerts-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Closed stores trigger 'zero sales' alerts every day",
+   "description": "Customer closed six stores in March, and the daily 'zero sales' alert has fired for each of them every day since.",
+   "resolution_notes": "The rule was scoped to a fixed list of store IDs created at setup, so closed stores stayed in scope. Changed the scope to the dynamic 'active stores' segment, which follows store status. The closed stores dropped out of the next evaluation and no further alerts were sent for them.",
+   "tags": [
+    "rule-scope",
+    "closed-stores",
+    "dynamic-segment"
+   ],
+   "created_at": "2026-03-26",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-071",
+   "family_id": "alerts-f12",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The dashboard filter worked correctly on screen; the alert rule simply had its own scope, so this is alerts rather than render.",
+   "category": "alerts",
+   "subject": "Alert created from dashboard ignores the dashboard's filter",
+   "description": "Customer created an alert from a widget on their 'Outlet stores' dashboard. The alert fires on figures for the whole company instead of outlets only.",
+   "resolution_notes": "The widget had no filter of its own; the outlet restriction was a dashboard-level filter, which alerts created from a widget do not inherit. Added the outlet segment to the rule scope, and the create-alert dialog now offers to copy dashboard-level filters. The rule's next evaluation matched the outlet dashboard's figures.",
+   "tags": [
+    "rule-scope",
+    "dashboard-filter",
+    "alert-from-widget"
+   ],
+   "created_at": "2026-05-21",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-072",
+   "family_id": "alerts-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "'Top 50 stores' alert doesn't include this year's best performers",
+   "description": "Agent summary: customer's rule watches the 'Top 50 stores' segment, but two stores that became top performers this year never generate alerts.",
+   "resolution_notes": "The segment had been saved as a static list when it was created, freezing the top 50 at that time. Recreated it as a dynamic segment recalculated weekly on trailing 12-month sales. The two stores now appear in the rule's scope and one was alerted on a weekend shortfall.",
+   "tags": [
+    "static-segment",
+    "dynamic-segment",
+    "rule-scope"
+   ],
+   "created_at": "2026-08-27",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-073",
+   "family_id": "alerts-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Changing who receives alert notifications is an alerts setting; the former manager's account access had already been removed correctly.",
+   "category": "alerts",
+   "subject": "Alerts for store 112 still go to the manager who left",
+   "description": "Customer's new store manager isn't receiving alerts for her store. The alerts are still being emailed to the previous manager's address.",
+   "resolution_notes": "The rule listed the previous manager's email address directly as a recipient, so it was not affected by the account changes. Replaced individual addresses with the role-based recipient 'Store manager of {store}', which follows the store's assigned manager. The new manager received the next test alert.",
+   "tags": [
+    "alert-recipients",
+    "role-based-routing",
+    "staff-change"
+   ],
+   "created_at": "2025-03-27",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-074",
+   "family_id": "alerts-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Escalation to regional manager never happens",
+   "description": "Customer's alerts should escalate to the regional manager if not acknowledged within 30 minutes. Store staff say they never acknowledge them, yet escalations never fire and the log shows each alert acknowledged within seconds.",
+   "resolution_notes": "The customer's email security scanner opened links in incoming emails, including the one-click 'acknowledge' link, so alerts were acknowledged automatically. Changed acknowledge links to open a confirmation page that requires a button press. Acknowledgement times now reflect real actions, and an unacknowledged test alert escalated after 30 minutes.",
+   "tags": [
+    "escalation-policy",
+    "link-scanning",
+    "acknowledgement"
+   ],
+   "created_at": "2025-08-07",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-075",
+   "family_id": "alerts-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Critical alerts going to email instead of on-call channel",
+   "description": "Customer's critical payment alerts were only emailed, though they had set up a route to send critical alerts to the on-call channel.",
+   "resolution_notes": "Routes are evaluated top to bottom and stop at the first match; a catch-all 'all severities to email' route sat above the critical route. Moved the critical route to the top. A critical test alert went to the on-call channel and warnings continued to go by email.",
+   "tags": [
+    "severity-routing",
+    "route-order",
+    "on-call"
+   ],
+   "created_at": "2025-12-04",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-076",
+   "family_id": "alerts-f13",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Store managers were not able to open other stores' data; the alert routing sent them notifications for other stores, so this is alerts rather than perm.",
+   "category": "alerts",
+   "subject": "Store managers receiving other stores' alerts",
+   "description": "Customer's store managers complain they get alerts for every store in their region, not just their own. The customer was worried it might be a permissions problem.",
+   "resolution_notes": "The route used the {region} placeholder for the recipient lookup instead of {store}, so each alert went to all managers in the region. Changed the placeholder to {store}. Each manager now receives only their store's alerts; dashboard access had been correct throughout.",
+   "tags": [
+    "routing-placeholder",
+    "alert-recipients",
+    "store-managers"
+   ],
+   "created_at": "2026-02-05",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-077",
+   "family_id": "alerts-f13",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Phone push alerts stopped after getting a new phone",
+   "description": "A district manager gets alerts by email but no longer gets push notifications in the mobile app since switching to a new phone.",
+   "resolution_notes": "Alert pushes were still being sent to the old device's push token, and the new phone had notifications disabled for the app at the operating system level. The manager enabled notifications and signed in again, which registered the new device, and we cleaned up the stale token. A test alert arrived on the new phone within seconds.",
+   "tags": [
+    "push-notifications",
+    "mobile-app",
+    "device-token"
+   ],
+   "created_at": "2026-06-25",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-078",
+   "family_id": "alerts-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Only some of the store team receive alerts",
+   "description": "Customer added a 120-person 'All store leads' group to a rule. About half the people say they never get the alerts.",
+   "resolution_notes": "A rule can notify at most 50 individual recipients, and the group was expanded and cut at that limit without a visible warning. Pointed the rule at the store leads' distribution list and chat channel instead, and the editor now warns when a group exceeds the limit. All store leads received the next alert.",
+   "tags": [
+    "recipient-limit",
+    "alert-recipients",
+    "group-expansion"
+   ],
+   "created_at": "2026-10-22",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-079",
+   "family_id": "alerts-f14",
+   "related_group": "alerts-g09",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Trading-hours alert firing an hour before stores open",
+   "description": "Since the clocks went forward, the customer's 'no sales during trading hours' alert fires at 08:00 every day, an hour before their stores open at 09:00.",
+   "resolution_notes": "The rule's active hours were stored as a fixed UTC offset from when it was created in winter, so after the daylight saving change the window started an hour early. Converted the rule to use a named time zone so it follows daylight saving automatically. The next morning the rule became active at 09:00 local time.",
+   "tags": [
+    "daylight-saving",
+    "active-hours",
+    "named-timezone"
+   ],
+   "created_at": "2025-03-31",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-080",
+   "family_id": "alerts-f14",
+   "related_group": "alerts-g09",
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Late-evening outage missed after clocks went back",
+   "description": "A till outage at 21:30 went unalerted. The customer's rule is active until 22:00, and the same rule caught a similar issue in the summer.",
+   "resolution_notes": "Active hours had been captured as a fixed UTC offset during summer time, so after the clocks went back the window ended at 21:00 local. Switched the rule to a named time zone and checked the customer's other rules for the same pattern, fixing nine more. A test breach at 21:30 now alerts.",
+   "tags": [
+    "daylight-saving",
+    "active-hours",
+    "missed-alert"
+   ],
+   "created_at": "2025-10-27",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-081",
+   "family_id": "alerts-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The workspace time-zone preference was correct; the rule had its own active-hours time zone, so this is alerts rather than workspace_admin.",
+   "category": "alerts",
+   "subject": "Toronto store opening alerts arrive in the middle of the night",
+   "description": "A head-office admin in London set up a 'store not opened on time' rule for the customer's Toronto stores. Toronto managers get the alert at around 4:00 local time, hours before opening.",
+   "resolution_notes": "The rule's active hours took the personal time zone of the admin who created it (London) rather than the stores' time zone, so the opening check ran on London time. Set the rule's time zone to Toronto's, and the editor now defaults new rules to the stores' time zone when all stores in scope share one. Toronto managers now receive the alert only when a store is actually late opening.",
+   "tags": [
+    "store-timezone",
+    "active-hours",
+    "creator-timezone"
+   ],
+   "created_at": "2026-01-08",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-082",
+   "family_id": "alerts-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Concerns the digest schedule of the alert channel, not a scheduled report delivery (export) or the workspace time zone (workspace_admin).",
+   "category": "alerts",
+   "subject": "Daily alert digest arrives at 3am",
+   "description": "Customer wanted a morning digest of yesterday's alerts at 08:00, but it reaches the team at 03:00 local time.",
+   "resolution_notes": "The digest channel's send time had no time zone set and defaulted to UTC, five hours ahead of the team. Set the channel's time zone to the team's local zone. The next digest arrived at 08:00 local time.",
+   "tags": [
+    "alert-digest",
+    "channel-timezone",
+    "send-time"
+   ],
+   "created_at": "2026-04-23",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-083",
+   "family_id": "alerts-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "Low-sales alerts on public holidays when stores are shut",
+   "description": "On the last two public holidays, every store triggered a 'sales below 50% of forecast' alert, although the stores were closed by plan.",
+   "resolution_notes": "The rule's schedule did not know about public holidays, and the forecast it compared against was a normal-day forecast. Attached the customer's holiday calendar to the rule schedule so evaluation pauses on listed closure days. On the next holiday no alerts were sent, and normal trading days were unaffected.",
+   "tags": [
+    "holiday-calendar",
+    "rule-schedule",
+    "store-closures"
+   ],
+   "created_at": "2026-07-16",
+   "status": "resolved"
+  },
+  {
+   "key": "alerts-084",
+   "family_id": "alerts-f14",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "alerts",
+   "subject": "One rule can't follow opening hours across four time zones",
+   "description": "Customer operates stores in four time zones and wants a single 'no sales in first trading hour' rule. With one active-hours window, some regions are always checked at the wrong time.",
+   "resolution_notes": "A rule's active hours can only use one time zone. As a workaround we split the rule into four copies, each scoped to one time zone's stores with matching hours; a single rule that follows each store's local opening hours is scheduled for a future release. Each regional copy fired correctly in tests at its local opening time.",
+   "tags": [
+    "multi-timezone",
+    "rule-split",
+    "opening-hours"
+   ],
+   "created_at": "2026-11-12",
+   "status": "resolved"
+  }
+ ]
+}

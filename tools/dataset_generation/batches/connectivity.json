@@ -1,0 +1,1665 @@
+{
+  "category": "connectivity",
+  "issue_families": [
+    {
+      "family_id": "connectivity-f01",
+      "name": "Product egress addresses blocked by customer firewalls",
+      "summary": "Connectors pulling from customer-hosted sources fail when the customer's firewall, API gateway or intrusion prevention system does not allow the product's published egress ranges (a newly added range, a too-narrow entry, geo-blocking, automatic IPS blocks). Symptoms are timeouts, resets or 403s on some or all runs.",
+      "boundary_note": "Data is not arriving because packets are dropped or refused by network policy; credentials and source data are fine, so this is not sync or auth."
+    },
+    {
+      "family_id": "connectivity-f02",
+      "name": "Corporate proxy behaviour",
+      "summary": "The customer's explicit proxy blocks WebSocket upgrades, is bypassed by non-browser tools, enforces short response timeouts or requires its own authentication. Symptoms are frozen live tiles, tool timeouts, 504 pages from the proxy and 407 responses.",
+      "boundary_note": "The product works from other networks and fails only through the proxy path; product-side slowness is perf and product sign-in failures are auth."
+    },
+    {
+      "family_id": "connectivity-f03",
+      "name": "TLS inspection appliances",
+      "summary": "Inspection devices re-sign traffic with corporate CAs that client tools do not trust, use weak or expired inspection CAs, or reset large inspected uploads. Symptoms are certificate errors limited to the corporate network.",
+      "boundary_note": "Certificate trust breaks on the network path and is fixed with correct trust chains and appliance configuration, never by disabling verification; credentials are not involved."
+    },
+    {
+      "family_id": "connectivity-f04",
+      "name": "DNS resolution",
+      "summary": "Stale resolver caches, overridden TTLs, split-horizon zones, filtering resolvers, hosts-file entries, VPN resolvers and product-side DNSSEC mistakes stop names resolving to the right addresses.",
+      "boundary_note": "Name resolution is a reachability problem; whether product links display a custom domain is a workspace_admin setting."
+    },
+    {
+      "family_id": "connectivity-f05",
+      "name": "Certificates on customer source endpoints",
+      "summary": "Customer-hosted APIs, FTPS and file endpoints that connectors read from present incomplete chains, expired certificates, hostname mismatches or privately issued certificates, so the connector cannot establish a trusted TLS session.",
+      "boundary_note": "The TLS handshake to the source fails; an expired OAuth token or a connector logic error would be sync."
+    },
+    {
+      "family_id": "connectivity-f06",
+      "name": "Webhook delivery reachability",
+      "summary": "Outbound webhook calls to customer receivers are dropped or rejected by firewalls, web application firewalls, internal-only DNS names, unsupported TLS versions, incomplete certificate chains or disallowed ports.",
+      "boundary_note": "Payloads, schemas and retry logic are correct; delivery fails at the network or TLS layer. Payload, rate-limit or retry defects are api."
+    },
+    {
+      "family_id": "connectivity-f07",
+      "name": "Embedded dashboard blocking",
+      "summary": "Embedded dashboards never display because the host page's Content-Security-Policy, the workspace's allowed embed origins, mixed content or a kiosk webview's domain allow-list block the frame.",
+      "boundary_note": "The frame is blocked by browser or network policy before anything is drawn; an embed that loads but draws visuals wrongly is render, and who may view it is perm."
+    },
+    {
+      "family_id": "connectivity-f08",
+      "name": "TLS protocol and cipher compatibility",
+      "summary": "Legacy clients or source servers limited to TLS 1.0/1.1, hardened cipher policies without a shared suite, or clients that omit SNI fail handshakes with the product or its connectors.",
+      "boundary_note": "Handshake failures are transport compatibility problems, not authentication or API errors."
+    },
+    {
+      "family_id": "connectivity-f09",
+      "name": "Identity provider endpoint reachability",
+      "summary": "The product cannot fetch IdP metadata, discovery or signing-key endpoints, or users' browsers cannot reach an on-premises IdP, so sign-in or certificate rollovers fail.",
+      "boundary_note": "Assertions and attribute mappings are correct; the failing step is reaching the IdP endpoint over the network, so this is connectivity rather than auth."
+    },
+    {
+      "family_id": "connectivity-f10",
+      "name": "Custom domain DNS and certificates",
+      "summary": "Custom domains break when certificate validation records are deleted, CAA records block issuance, records point to retired targets or IP addresses, or changes are made in a non-authoritative zone.",
+      "boundary_note": "The domain does not resolve or serve a valid certificate; whether links and emails use the custom domain is a workspace_admin setting."
+    },
+    {
+      "family_id": "connectivity-f11",
+      "name": "Data agent egress to ingestion endpoints",
+      "summary": "On-premises data agents and upload tools are blocked by egress rules missing regional or control-plane hostnames, legacy ports, IP-based rules that miss anycast addresses, or NAT port exhaustion.",
+      "boundary_note": "The agent cannot reach the product's ingestion endpoints at all; once connected, slow, partial or duplicated ingestion is sync."
+    },
+    {
+      "family_id": "connectivity-f12",
+      "name": "Workspace IP allow-list",
+      "summary": "The workspace-level IP allow-list blocks legitimate users after public IP changes, CIDR mistakes, split-tunnel VPN routing or an IPv6 rollout.",
+      "boundary_note": "Users authenticate correctly and are refused by network-location policy; role-based access to content is perm."
+    },
+    {
+      "family_id": "connectivity-f13",
+      "name": "IPv6, MTU and routing paths",
+      "summary": "Broken IPv6 routes, path-MTU black holes on tunnels, IPv6-only segments without DNS64/NAT64 and asymmetric routing cause hangs and resets on particular networks only.",
+      "boundary_note": "Failures follow the network path, not product load (perf) or session lifetime (auth)."
+    },
+    {
+      "family_id": "connectivity-f14",
+      "name": "Web filtering and secure web gateways",
+      "summary": "Secure web gateways, data-loss prevention rules, managed browser extensions and mis-assigned filtering policies block product hostnames, uploads or downloads.",
+      "boundary_note": "Access is denied by the customer's content filtering, not by product permissions, authentication or export logic."
+    }
+  ],
+  "related_groups": [
+    {
+      "group_id": "connectivity-g01",
+      "family_id": "connectivity-f01",
+      "shared_root_cause": "The product added a second connector egress range (198.51.100.32/28) that the customer's firewall or gateway did not yet allow, so runs on new workers were dropped."
+    },
+    {
+      "group_id": "connectivity-g02",
+      "family_id": "connectivity-f03",
+      "shared_root_cause": "Corporate TLS inspection re-signs outbound traffic with an internal root CA that is missing from the client tool's trust store."
+    },
+    {
+      "group_id": "connectivity-g03",
+      "family_id": "connectivity-f02",
+      "shared_root_cause": "The corporate proxy refuses or strips the HTTP Upgrade needed for WebSocket connections to the real-time host live.example.net."
+    },
+    {
+      "group_id": "connectivity-g04",
+      "family_id": "connectivity-f05",
+      "shared_root_cause": "The customer's source server presents its leaf certificate without the intermediate certificate, so strict clients cannot build the chain."
+    },
+    {
+      "group_id": "connectivity-g05",
+      "family_id": "connectivity-f12",
+      "shared_root_cause": "The office's public IP changed (ISP or circuit change) while the workspace IP allow-list still held the old address."
+    },
+    {
+      "group_id": "connectivity-g06",
+      "family_id": "connectivity-f07",
+      "shared_root_cause": "The host page's Content-Security-Policy frame-src does not include the product's embed origin, so browsers refuse the frame."
+    },
+    {
+      "group_id": "connectivity-g07",
+      "family_id": "connectivity-f09",
+      "shared_root_cause": "The IdP metadata URL resolves only on the customer's internal network, so the product's metadata refresh silently fails."
+    },
+    {
+      "group_id": "connectivity-g08",
+      "family_id": "connectivity-f08",
+      "shared_root_cause": "Legacy clients limited to TLS 1.0/1.1 stopped connecting after the product retired those protocol versions."
+    },
+    {
+      "group_id": "connectivity-g09",
+      "family_id": "connectivity-f10",
+      "shared_root_cause": "The DNS validation record for the managed custom-domain certificate was deleted, so automatic renewal failed and the certificate expired."
+    },
+    {
+      "group_id": "connectivity-g10",
+      "family_id": "connectivity-f11",
+      "shared_root_cause": "Egress rules allowed the global ingestion hostname but not the regional hostname used after the workspace moved to the EU data region."
+    },
+    {
+      "group_id": "connectivity-g11",
+      "family_id": "connectivity-f13",
+      "shared_root_cause": "Path-MTU black hole: a branch tunnel with reduced MTU while ICMP fragmentation-needed messages are blocked, so large packets silently disappear."
+    },
+    {
+      "group_id": "connectivity-g12",
+      "family_id": "connectivity-f14",
+      "shared_root_cause": "The customer's secure web gateway blocked a newly introduced product hostname as uncategorised or newly registered."
+    }
+  ],
+  "tickets": [
+    {
+      "key": "connectivity-001",
+      "family_id": "connectivity-f01",
+      "related_group": "connectivity-g01",
+      "challenge": null,
+      "classification_rationale": "The sync failures were caused by the customer's firewall dropping the product's traffic, not by credentials or connector logic.",
+      "category": "connectivity",
+      "subject": "Nightly SFTP pull failing about half the time",
+      "description": "Customer reports the nightly pull from their on-prem file server sftp.harborpine.example.com has failed on roughly every second run since last week with 'connection timed out after 30s'; manual retries sometimes succeed.",
+      "resolution_notes": "The connector worker pool had been expanded with a second egress range, 198.51.100.32/28, announced in the release notes, but the customer's perimeter firewall only allowed the original 198.51.100.0/28, so runs scheduled on new workers timed out. The customer's network team added the new range to the existing SFTP rule, port 22 only. Seven consecutive nightly pulls then completed without retries.",
+      "tags": [
+        "egress-ip",
+        "firewall",
+        "sftp"
+      ],
+      "created_at": "2025-04-22",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-002",
+      "family_id": "connectivity-f01",
+      "related_group": "connectivity-g01",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "POS API connector shows 'host unreachable' on some runs",
+      "description": "The store POS integration alternates between successful runs and 'EHOSTUNREACH 192.0.2.40:443' errors, and the customer says nothing changed on their POS gateway.",
+      "resolution_notes": "Runs failed whenever they were picked up by workers in the product's newer egress range, which the gateway's access list did not include. We shared the full published egress list and the customer added 198.51.100.32/28 to the gateway allow-list for port 443. Every run over the next 48 hours succeeded from both worker pools.",
+      "tags": [
+        "egress-ip",
+        "pos-gateway",
+        "allow-list"
+      ],
+      "created_at": "2025-04-24",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-003",
+      "family_id": "connectivity-f01",
+      "related_group": "connectivity-g01",
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "ERP inventory feed stalled since Tuesday",
+      "description": "Agent summary: the inventory feed from the customer's on-prem ERP gateway has not completed since Tuesday, logs show TCP connections timing out, and the customer's change board needs a week to approve firewall changes.",
+      "resolution_notes": "The feed was being scheduled on workers in the newer egress range, which the customer's firewall had not yet allowed. As a temporary workaround we pinned this connector to the original worker pool so its traffic came from the already-allowed 198.51.100.0/28; the permanent fix, adding 198.51.100.32/28 to the firewall rule, was approved and applied eight days later and the pin was removed. Feeds completed on schedule throughout.",
+      "tags": [
+        "egress-ip",
+        "erp-feed",
+        "change-control"
+      ],
+      "created_at": "2025-05-02",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-004",
+      "family_id": "connectivity-f01",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Loyalty API pulls only get through occasionally",
+      "description": "Customer says the loyalty platform connector worked throughout their pilot but now fails most nights with timeouts, while the odd run still gets through.",
+      "resolution_notes": "During the pilot the customer's firewall rule had been created for a single address seen in their logs, 198.51.100.5/32, rather than the published 198.51.100.0/28 range, so only runs that happened to use that worker succeeded. Replaced the single-host entry with the published ranges. Ten consecutive runs succeeded across different workers.",
+      "tags": [
+        "egress-ip",
+        "allow-list",
+        "loyalty-connector"
+      ],
+      "created_at": "2025-09-09",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-005",
+      "family_id": "connectivity-f01",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The 403 came from a network geo-restriction on the source gateway rather than an invalid credential, so it is connectivity rather than auth.",
+      "category": "connectivity",
+      "subject": "Source API gateway returns 403 to EU connector workers",
+      "description": "After the customer moved their order API behind a new API gateway, pulls from our EU region fail with '403 Forbidden - region not permitted', while their US workspace using the same API works.",
+      "resolution_notes": "The new gateway had a geo-restriction policy that blocked requests from outside North America, which included the product's EU connector egress addresses. The customer added the product's published EU egress ranges to the gateway's geo-policy exceptions for the order API path only. Pulls from the EU workspace succeeded on the next run.",
+      "tags": [
+        "geo-blocking",
+        "api-gateway",
+        "eu-region"
+      ],
+      "created_at": "2026-02-24",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-006",
+      "family_id": "connectivity-f01",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "File pickup resets after the first few files",
+      "description": "Each night the connector downloads three or four files from the customer's FTPS server, then every remaining transfer fails with 'connection reset by peer'.",
+      "resolution_notes": "The customer's intrusion prevention system interpreted the connector's parallel transfer connections as a scan and temporarily blocked the source address. The customer created an IPS exception for the product's published egress range scoped to the FTPS service, and we reduced the connector's parallel transfers for this source from 8 to 3. All 41 files transferred the following night.",
+      "tags": [
+        "intrusion-prevention",
+        "ftps",
+        "connection-reset"
+      ],
+      "created_at": "2026-06-23",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-007",
+      "family_id": "connectivity-f02",
+      "related_group": "connectivity-g03",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Live sales tiles stuck on 'Reconnecting…' at head office",
+      "description": "Everyone at the customer's head office sees the real-time sales tiles show 'Reconnecting…' indefinitely, while the rest of each dashboard loads normally.",
+      "resolution_notes": "The customer's explicit proxy did not permit HTTP Upgrade requests, so the WebSocket connection to live.example.net used by real-time tiles was refused. The proxy team enabled WebSocket upgrades for live.example.net. Live tiles now update within five seconds of a test sale.",
+      "tags": [
+        "proxy",
+        "websocket",
+        "real-time-tiles"
+      ],
+      "created_at": "2025-03-18",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-008",
+      "family_id": "connectivity-f02",
+      "related_group": "connectivity-g03",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Real-time order counter frozen on corporate laptops",
+      "description": "Per the customer: 'The order counter never moves on our work laptops, but on our phones it ticks up all day.' Both use the same accounts.",
+      "resolution_notes": "Corporate laptops route web traffic through the company proxy, which was stripping the Upgrade and Connection headers, so the live channel could not open; phones on mobile data bypass the proxy. After the network team allowed WebSocket upgrades to live.example.net, the counter updated on laptops as well.",
+      "tags": [
+        "proxy",
+        "websocket",
+        "live-updates"
+      ],
+      "created_at": "2025-08-27",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-009",
+      "family_id": "connectivity-f02",
+      "related_group": "connectivity-g03",
+      "challenge": "related_symptom_different_product",
+      "classification_rationale": "The embed itself loaded; only its live data channel was blocked by the proxy, so this is connectivity rather than render.",
+      "category": "connectivity",
+      "subject": "Embedded live board on store intranet never refreshes",
+      "description": "The customer embeds a live sales board in their store intranet; it loads once and then never updates, unlike the same board opened directly in the app from home.",
+      "resolution_notes": "Store traffic passes through the corporate proxy, which blocked the WebSocket upgrade the embedded board uses for live data, so the embed only ever showed its initial snapshot. Allowing WebSocket upgrades to live.example.net on the proxy resolved it; the embedded board updated continuously during a 30-minute test at two stores.",
+      "tags": [
+        "proxy",
+        "websocket",
+        "embedded-dashboard"
+      ],
+      "created_at": "2026-03-10",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-010",
+      "family_id": "connectivity-f02",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Desktop upload tool times out, browser upload works",
+      "description": "Customer's analyst can upload the weekly CSV through the browser, but the desktop upload tool on the same machine fails with 'connect ETIMEDOUT'.",
+      "resolution_notes": "The browser picked up the corporate PAC file and used the proxy, while the upload tool tried to connect directly and was dropped by the egress firewall. Configured the tool's proxy setting with the corporate proxy address from the PAC file. Uploads from the tool now complete in the same time as through the browser.",
+      "tags": [
+        "proxy",
+        "pac-file",
+        "upload-tool"
+      ],
+      "created_at": "2025-06-05",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-011",
+      "family_id": "connectivity-f02",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": "The request was cut off by the proxy's timeout rather than failing in the product, so this is connectivity even though query time was a factor.",
+      "category": "connectivity",
+      "subject": "Full-year dashboards fail at exactly 60 seconds from the office",
+      "description": "Dashboards with a full-year date range fail with a gateway error after exactly 60 seconds for users in the office, yet load in about 75 seconds when the same users work from home.",
+      "resolution_notes": "The customer's proxy enforced a 60-second response timeout and returned its own 504 page before the product finished the query. The network team raised the response timeout for app.example.net to 180 seconds, and we suggested enabling pre-aggregation on the heaviest dashboard to shorten its queries. Full-year dashboards now load from the office.",
+      "tags": [
+        "proxy",
+        "gateway-timeout",
+        "504"
+      ],
+      "created_at": "2025-10-15",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-012",
+      "family_id": "connectivity-f02",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The authentication challenge came from the customer's proxy, not the product's sign-in, so this is connectivity rather than auth.",
+      "category": "connectivity",
+      "subject": "Sync agent logs '407 Proxy Authentication Required'",
+      "description": "The on-prem sync agent installed on a new server cannot connect, and its log shows '407 Proxy Authentication Required' on every attempt; the customer assumed their product credentials were wrong.",
+      "resolution_notes": "The 407 came from the customer's proxy, which requires authentication for server-originated traffic, and the agent had no proxy credentials configured. Configured the agent's proxy settings with the dedicated proxy service identity the network team issues for server tools. The agent registered and completed a test upload.",
+      "tags": [
+        "proxy",
+        "proxy-authentication",
+        "sync-agent"
+      ],
+      "created_at": "2026-09-22",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-013",
+      "family_id": "connectivity-f03",
+      "related_group": "connectivity-g02",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "On-prem agent fails with 'unable to get local issuer certificate'",
+      "description": "Since last Friday the customer's on-prem data agent refuses to connect to ingest.example.net and logs 'unable to get local issuer certificate'.",
+      "resolution_notes": "The customer's new inspection appliance re-signs outbound TLS with an internal root CA that was not in the agent's bundled trust store. Imported the corporate root CA through the agent's documented CA bundle setting, leaving certificate verification on. The agent reconnected and the queued uploads completed.",
+      "tags": [
+        "tls-inspection",
+        "root-ca",
+        "data-agent"
+      ],
+      "created_at": "2025-02-11",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-014",
+      "family_id": "connectivity-f03",
+      "related_group": "connectivity-g02",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "CSV upload CLI fails only from branch offices",
+      "description": "Customer's upload script using the command-line client works from HQ but fails from every branch office with 'SSL: CERTIFICATE_VERIFY_FAILED'.",
+      "resolution_notes": "Branch traffic passes through a TLS inspection gateway that HQ traffic does not, and the gateway presents certificates signed by the company's inspection CA, which the CLI's trust store lacked. Added the inspection CA to the CLI's trust configuration on branch machines through the customer's device management. Uploads from three branches succeeded.",
+      "tags": [
+        "tls-inspection",
+        "certificate-verify-failed",
+        "cli"
+      ],
+      "created_at": "2025-11-18",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-015",
+      "family_id": "connectivity-f03",
+      "related_group": "connectivity-g02",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Data agent shows offline after security gateway rollout",
+      "description": "The agent status page shows 'offline, last heartbeat 3 days ago' for the customer's agent, which lines up with their security team rolling out a new web gateway.",
+      "resolution_notes": "The new gateway intercepts TLS and signs certificates with a corporate CA the agent did not trust, so heartbeats failed validation. Installed the corporate root CA in the agent's trust store; heartbeats resumed within a minute and the upload backlog drained.",
+      "tags": [
+        "tls-inspection",
+        "agent-heartbeat",
+        "trust-store"
+      ],
+      "created_at": "2026-05-19",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-016",
+      "family_id": "connectivity-f03",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Certificate warning for the app on office Wi-Fi only",
+      "description": "Users on the office network get 'NET::ERR_CERT_WEAK_SIGNATURE_ALGORITHM' when opening app.example.net; the same laptops on home Wi-Fi are fine.",
+      "resolution_notes": "The customer's inspection appliance was re-signing traffic with an intermediate CA signed using SHA-1, which current browsers reject. The network team issued a new SHA-256 inspection CA and deployed it to devices. The warning no longer appears on the office network.",
+      "tags": [
+        "tls-inspection",
+        "sha1",
+        "browser-warning"
+      ],
+      "created_at": "2025-07-29",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-017",
+      "family_id": "connectivity-f03",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "'Certificate expired' error for everyone in the office",
+      "description": "From Monday morning every user on the customer's corporate network gets a certificate-expired warning when opening the product, and the customer believed our certificate had lapsed.",
+      "resolution_notes": "The product's certificate was valid; the warning came from the customer's inspection appliance, whose signing CA expired over the weekend, so every re-signed certificate chained to an expired CA. The customer renewed the inspection CA and redeployed it to managed devices. Users reported normal access after the push.",
+      "tags": [
+        "tls-inspection",
+        "expired-ca",
+        "certificate-warning"
+      ],
+      "created_at": "2026-01-05",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-018",
+      "family_id": "connectivity-f03",
+      "related_group": null,
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Large CSV uploads fail at around 1 GB",
+      "description": "Uploads of the customer's monthly 2.3 GB transactions file fail with 'connection reset' at about the 1 GB mark, while smaller files upload fine.",
+      "resolution_notes": "The inspection appliance has a 1 GB maximum inspected object size and resets connections that exceed it. As a workaround the customer switched the upload tool to multipart mode with 256 MB parts, each sent as a separate request; the network team scheduled a policy update for the ingestion host in their next change window. The 2.3 GB file uploaded successfully in parts.",
+      "tags": [
+        "tls-inspection",
+        "large-upload",
+        "multipart"
+      ],
+      "created_at": "2026-08-04",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-019",
+      "family_id": "connectivity-f04",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Internal users reach a retired page via our analytics subdomain",
+      "description": "Staff on the corporate network opening analytics.copperleaf.example.com land on a retired intranet page, while external users reach the dashboards.",
+      "resolution_notes": "The customer's internal DNS held an authoritative zone for copperleaf.example.com with an old A record for 'analytics', overriding the public CNAME to the product. The customer replaced the internal record with the same CNAME used publicly. Internal resolution now matches public DNS and staff reach the dashboards.",
+      "tags": [
+        "dns",
+        "split-horizon",
+        "custom-domain"
+      ],
+      "created_at": "2025-01-21",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-020",
+      "family_id": "connectivity-f04",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "App unreachable for a day after maintenance window",
+      "description": "After our scheduled edge maintenance, the customer's offices could not reach app.example.net for about 24 hours, while their remote staff were unaffected.",
+      "resolution_notes": "The customer's internal resolvers enforced a minimum cache time of 24 hours, overriding the record's 5-minute TTL, so they kept serving retired edge addresses after the maintenance. Their DNS team flushed the cache and removed the minimum-TTL override for external zones. Resolution now follows the published TTL.",
+      "tags": [
+        "dns",
+        "ttl",
+        "resolver-cache"
+      ],
+      "created_at": "2025-06-26",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-021",
+      "family_id": "connectivity-f04",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Regional ingestion hostname returns NXDOMAIN on store servers",
+      "description": "Store servers get 'NXDOMAIN' for ingest.eu.example.net, though ingest.example.net resolves fine from the same machines.",
+      "resolution_notes": "The store network uses a filtering resolver that only answers for approved domains, and the regional hostname had not been added when the customer moved to the EU data region. The customer added ingest.eu.example.net to the resolver's approved list. Lookups succeed and the store servers resumed uploads.",
+      "tags": [
+        "dns",
+        "filtering-resolver",
+        "regional-endpoint"
+      ],
+      "created_at": "2026-04-21",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-022",
+      "family_id": "connectivity-f04",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Store kiosks can't open dashboards; back-office PCs can",
+      "description": "All in-store kiosks show 'This site can't be reached' for the product since Monday, while back-office PCs in the same stores work normally.",
+      "resolution_notes": "The kiosk image contained a static hosts-file entry from an earlier pilot that pinned app.example.net to an address we retired over the weekend. The customer removed the entry from the image and redeployed it to all kiosks. Kiosks now resolve through normal DNS and load dashboards.",
+      "tags": [
+        "dns",
+        "hosts-file",
+        "kiosk"
+      ],
+      "created_at": "2025-10-07",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-023",
+      "family_id": "connectivity-f04",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Intermittent 'server not found' from validating resolvers",
+      "description": "Several customers whose networks use DNSSEC-validating resolvers reported 'server not found' for the product for about two hours, while other customers were unaffected.",
+      "resolution_notes": "A DNSSEC key rollover on the product's own zone was performed with too short an overlap, so validating resolvers holding the previous DS record treated new responses as bogus. Our operations team re-published both keys and extended the overlap to a full TTL cycle. Validation succeeded from public test resolvers and affected customers confirmed recovery.",
+      "tags": [
+        "dns",
+        "dnssec",
+        "resolution-failure"
+      ],
+      "created_at": "2025-12-16",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-024",
+      "family_id": "connectivity-f04",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Product unreachable only while connected to VPN",
+      "description": "Customer's remote staff can use the product until they connect to the corporate VPN, at which point the app stops loading with a DNS error.",
+      "resolution_notes": "The VPN pushes internal DNS servers that did not forward external queries for split-tunnel clients, so app.example.net could not be resolved once connected. The customer configured conditional forwarding for the product's domains on the VPN resolvers. Users stay connected to the app when the VPN comes up.",
+      "tags": [
+        "dns",
+        "vpn",
+        "split-tunnel"
+      ],
+      "created_at": "2026-07-14",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-025",
+      "family_id": "connectivity-f05",
+      "related_group": "connectivity-g04",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Order API connector: 'unable to verify the first certificate'",
+      "description": "The connector to the customer's on-prem order API fails with 'unable to verify the first certificate', yet the customer can open the same URL in their browser without any warning.",
+      "resolution_notes": "The customer's server presented only its leaf certificate without the intermediate; browsers filled the gap from cached intermediates, but the connector validates strictly. The customer installed the full chain on the server. An external chain check showed the complete chain and the next connector run succeeded.",
+      "tags": [
+        "certificate-chain",
+        "intermediate-certificate",
+        "source-api"
+      ],
+      "created_at": "2025-03-04",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-026",
+      "family_id": "connectivity-f05",
+      "related_group": "connectivity-g04",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Inventory feed broke right after certificate renewal",
+      "description": "The customer renewed the TLS certificate on their inventory endpoint on Friday; since then every scheduled run fails during the handshake.",
+      "resolution_notes": "The renewal installed the new leaf certificate but not the issuing CA's intermediate bundle, so the chain could not be built to a trusted root. The customer reinstalled the certificate with the full chain file. The handshake now completes and the backlog of runs has processed.",
+      "tags": [
+        "certificate-chain",
+        "certificate-renewal",
+        "inventory-feed"
+      ],
+      "created_at": "2025-09-23",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-027",
+      "family_id": "connectivity-f05",
+      "related_group": "connectivity-g04",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "FTPS pickup fails handshake after server migration",
+      "description": "Following the customer's move to a new FTPS server, the connector reports 'certificate verify failed' on the control connection before it can list any files.",
+      "resolution_notes": "The new server was configured with the leaf certificate only, omitting the intermediate the old server had served. The customer added the intermediate to the server's certificate file, after which the connector validated the chain and collected all pending files.",
+      "tags": [
+        "certificate-chain",
+        "ftps",
+        "server-migration"
+      ],
+      "created_at": "2026-10-20",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-028",
+      "family_id": "connectivity-f05",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Catalogue connector: 'certificate has expired' since Saturday",
+      "description": "The customer's product catalogue connector has failed every run since Saturday with 'certificate has expired' from their catalogue API.",
+      "resolution_notes": "The certificate on the customer's catalogue API host had reached its expiry date without renewal because the reminder went to a former team mailbox. The customer renewed and installed the certificate and updated the reminder contact. The connector resumed and caught up within an hour.",
+      "tags": [
+        "expired-certificate",
+        "source-api",
+        "catalogue"
+      ],
+      "created_at": "2025-05-20",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-029",
+      "family_id": "connectivity-f05",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Source connection fails: hostname does not match certificate",
+      "description": "After the customer pointed the connector at their new hostname orders-api.northwind.example.com, runs fail with 'Hostname/IP does not match certificate's altnames'.",
+      "resolution_notes": "The server's certificate still listed only the old hostname among its subject alternative names. The customer reissued the certificate with both hostnames as SANs. The connector validated the new hostname and the next run completed.",
+      "tags": [
+        "certificate",
+        "san-mismatch",
+        "source-api"
+      ],
+      "created_at": "2026-02-03",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-030",
+      "family_id": "connectivity-f05",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Returns connector rejects internally issued certificate",
+      "description": "Since the customer re-issued their returns system's certificate from their internal CA, the returns connector fails with 'self-signed certificate in certificate chain'.",
+      "resolution_notes": "Connectors trust public CAs by default and could not build a chain to the customer's internal root. Uploaded the customer's root CA certificate to the connection's custom trust setting, so verification stays enabled but trusts that CA for this connection only. Runs succeeded and the trust setting is recorded in the connection notes.",
+      "tags": [
+        "private-ca",
+        "custom-trust",
+        "returns-connector"
+      ],
+      "created_at": "2025-12-23",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-031",
+      "family_id": "connectivity-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "Payloads and retries were working; packets were dropped by the customer's firewall, so this is connectivity rather than api.",
+      "category": "connectivity",
+      "subject": "Webhook deliveries time out after receiver moved",
+      "description": "Since the customer moved their webhook receiver behind a new firewall, every delivery in the webhook log shows 'timeout after 10s'.",
+      "resolution_notes": "The new firewall only admitted known partner addresses, and the product's webhook sender range 198.51.100.128/28 was not on the list. The customer added the sender range to the receiver's inbound rule for port 443. Redelivered events arrived and new events now land within seconds.",
+      "tags": [
+        "webhooks",
+        "inbound-firewall",
+        "sender-ip"
+      ],
+      "created_at": "2025-02-26",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-032",
+      "family_id": "connectivity-f06",
+      "related_group": null,
+      "challenge": "related_symptom_different_product",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Webhook log shows TLS handshake failure; endpoint fine in browser",
+      "description": "The webhook delivery log for the customer's endpoint shows 'TLS handshake failed: unable to verify certificate', but the customer can open the endpoint URL in a browser.",
+      "resolution_notes": "The receiver's load balancer served the leaf certificate without the intermediate, which the browser supplied from its cache but our webhook sender cannot. The customer uploaded the full chain to the load balancer. Test deliveries succeeded and the failed events were replayed.",
+      "tags": [
+        "webhooks",
+        "certificate-chain",
+        "load-balancer"
+      ],
+      "created_at": "2026-03-17",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-033",
+      "family_id": "connectivity-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Webhooks to legacy receiver fail with 'protocol version'",
+      "description": "Deliveries to the customer's older order-routing service fail immediately with 'tlsv1 alert protocol version'.",
+      "resolution_notes": "The receiver only supported TLS 1.0, while the webhook sender requires TLS 1.2 or later. The customer enabled TLS 1.2 on the service's reverse proxy. Deliveries succeeded on the next retry cycle.",
+      "tags": [
+        "webhooks",
+        "tls-version",
+        "legacy-receiver"
+      ],
+      "created_at": "2025-08-19",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-034",
+      "family_id": "connectivity-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Webhook delivery log: 'could not resolve host'",
+      "description": "Customer configured webhooks to https://events.corp.northwind.example.com/hooks and every delivery fails with 'could not resolve host'.",
+      "resolution_notes": "That hostname exists only in the customer's internal DNS, so the product's senders on the public internet could neither resolve nor reach it. The customer published the receiver through their external reverse proxy under a public hostname with a valid certificate and updated the webhook URL. Deliveries succeeded and were confirmed in the receiver's logs.",
+      "tags": [
+        "webhooks",
+        "internal-dns",
+        "reverse-proxy"
+      ],
+      "created_at": "2026-11-11",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-035",
+      "family_id": "connectivity-f06",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The 403 was issued by the customer's web application firewall, not by an authorization check, so this is connectivity rather than auth or perm.",
+      "category": "connectivity",
+      "subject": "Webhook deliveries rejected with 403 and an HTML page",
+      "description": "Webhook deliveries started returning 403 Forbidden with an HTML error page after the customer put a web application firewall in front of their receiver.",
+      "resolution_notes": "A WAF rule flagged the JSON body, which contains URLs and escaped product names, as possible injection and blocked it. The customer added a rule exception limited to the webhook path and the product's sender range and kept signature verification on the receiver. Deliveries succeed, and the WAF still inspects other traffic to that path.",
+      "tags": [
+        "webhooks",
+        "waf",
+        "http-403"
+      ],
+      "created_at": "2025-11-26",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-036",
+      "family_id": "connectivity-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Webhook URL on port 9000 never receives events",
+      "description": "The webhook delivery log shows 'destination port not permitted' for the customer's receiver at https://hooks.copperleaf.example.com:9000/events.",
+      "resolution_notes": "The product's webhook sender only connects to ports 443 and 8443, as documented, and refuses other destination ports. The customer exposed the receiver on 443 through their existing reverse proxy and updated the URL. Test events were delivered and acknowledged.",
+      "tags": [
+        "webhooks",
+        "destination-port",
+        "reverse-proxy"
+      ],
+      "created_at": "2026-06-09",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-037",
+      "family_id": "connectivity-f07",
+      "related_group": "connectivity-g06",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Embedded dashboard on intranet says 'refused to connect'",
+      "description": "The customer's intranet page shows 'embed.example.net refused to connect' where the embedded sales dashboard should appear.",
+      "resolution_notes": "The intranet portal's Content-Security-Policy frame-src directive listed only internal origins, so the browser blocked the frame. The portal team added https://embed.example.net to frame-src. The dashboard displays in the portal in every browser tested.",
+      "tags": [
+        "embedding",
+        "content-security-policy",
+        "intranet"
+      ],
+      "created_at": "2025-04-01",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-038",
+      "family_id": "connectivity-f07",
+      "related_group": "connectivity-g06",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Embed works on test portal, not on production portal",
+      "description": "The embedded store-performance dashboard appears on the customer's test intranet, but the same embed code shows an empty grey box in production.",
+      "resolution_notes": "The production portal sends a stricter Content-Security-Policy header than the test portal, and its frame-src did not include the embed origin. After the portal team added https://embed.example.net to the production policy, the embed loaded identically in both environments.",
+      "tags": [
+        "embedding",
+        "csp-frame-src",
+        "environment-difference"
+      ],
+      "created_at": "2025-10-21",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-039",
+      "family_id": "connectivity-f07",
+      "related_group": "connectivity-g06",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "All embedded widgets blank after intranet hardening release",
+      "description": "Agent summary: after the customer's intranet security hardening release, every embedded widget is blank and the browser console reports 'Refused to frame ... because it violates the following Content Security Policy directive'.",
+      "resolution_notes": "The hardening release introduced a default frame-src 'self' policy, which blocks frames from any other origin, including the product's embed host. The customer added the specific embed origin to the policy rather than loosening it globally. Widgets returned on all intranet pages.",
+      "tags": [
+        "embedding",
+        "csp-violation",
+        "security-hardening"
+      ],
+      "created_at": "2026-07-07",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-040",
+      "family_id": "connectivity-f07",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": "The frame was blocked by an origin policy enforced in the browser, not by user permissions, so this sits in connectivity rather than perm.",
+      "category": "connectivity",
+      "subject": "Embedded dashboard blocked after intranet moved to a new domain",
+      "description": "The customer moved their intranet from portal.alderash.example.com to hub.alderash.example.com, and embedded dashboards now show a blocked-frame message.",
+      "resolution_notes": "The workspace's allowed embed origins, which the product sends as its frame-ancestors policy, still listed only the old intranet origin. The admin added https://hub.alderash.example.com as an exact origin rather than a wildcard. Embeds load on the new intranet and remain blocked elsewhere.",
+      "tags": [
+        "embedding",
+        "frame-ancestors",
+        "allowed-origins"
+      ],
+      "created_at": "2025-05-28",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-041",
+      "family_id": "connectivity-f07",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Embedded chart blocked as mixed content",
+      "description": "The customer's partner portal shows nothing where the embed should be, and the console reports 'Mixed Content: The page was loaded over HTTPS, but requested an insecure frame'.",
+      "resolution_notes": "The embed snippet on the portal had been pasted with an http:// URL from an outdated guide. Updated the snippet to https://embed.example.net and the browser loaded the frame. The outdated guide was corrected.",
+      "tags": [
+        "embedding",
+        "mixed-content",
+        "https"
+      ],
+      "created_at": "2026-01-13",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-042",
+      "family_id": "connectivity-f07",
+      "related_group": null,
+      "challenge": "related_symptom_different_product",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Embedded dashboard blank inside the store kiosk app",
+      "description": "The embedded dashboard that works in desktop browsers shows only a white panel inside the customer's in-store kiosk app.",
+      "resolution_notes": "The kiosk app's webview enforces its own domain allow-list, which included the intranet but not embed.example.net or cdn.example.net. The customer's device team added both hosts to the kiosk configuration profile. The dashboard now appears inside the kiosk app.",
+      "tags": [
+        "embedding",
+        "kiosk-app",
+        "domain-allow-list"
+      ],
+      "created_at": "2025-08-06",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-043",
+      "family_id": "connectivity-f08",
+      "related_group": "connectivity-g08",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Older kiosk browsers can't open dashboards after maintenance weekend",
+      "description": "Kiosks running the customer's older thin-client image show 'secure connection failed' for the product since our maintenance weekend; newer devices are fine.",
+      "resolution_notes": "As announced, TLS 1.0 and 1.1 were disabled on the product's endpoints that weekend, and the thin-client image's browser only supported those versions. The customer updated the kiosk image to a browser build with TLS 1.2. Kiosks connected normally after the update.",
+      "tags": [
+        "tls-version",
+        "tls-deprecation",
+        "kiosk"
+      ],
+      "created_at": "2025-01-29",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-044",
+      "family_id": "connectivity-f08",
+      "related_group": "connectivity-g08",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "End-of-day POS upload script fails with 'protocol version' alert",
+      "description": "A scheduled script on the customer's POS back-office server that uploads end-of-day files started failing with 'SSL routines: tlsv1 alert protocol version'.",
+      "resolution_notes": "The script's runtime defaulted to TLS 1.0, which the product no longer accepts. Configured the runtime to negotiate TLS 1.2 through its system setting and restarted the scheduled task. Uploads succeeded that evening.",
+      "tags": [
+        "tls-version",
+        "pos-script",
+        "end-of-day-upload"
+      ],
+      "created_at": "2025-02-06",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-045",
+      "family_id": "connectivity-f08",
+      "related_group": "connectivity-g08",
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Back-office PCs at franchise stores lost access to the app",
+      "description": "Twelve franchise stores whose back-office PCs run an older operating system can no longer load the app, and the franchisee says their OS upgrade is months away.",
+      "resolution_notes": "Those PCs' built-in browser cannot negotiate TLS 1.2, which the product now requires. As a workaround the franchisee installed the company's managed current browser package, which brings its own TLS 1.2 support; the OS upgrade remains scheduled as the permanent fix. All twelve stores regained access the same day.",
+      "tags": [
+        "tls-version",
+        "franchise-stores",
+        "legacy-os"
+      ],
+      "created_at": "2025-02-13",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-046",
+      "family_id": "connectivity-f08",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Agent handshake fails with 'no shared cipher'",
+      "description": "After hardening their server build, the customer's on-prem agent fails to connect with 'handshake failure: no shared cipher'.",
+      "resolution_notes": "The hardened build's policy only enabled RSA key-exchange CBC suites, none of which the product's endpoints accept. The customer enabled the ECDHE-GCM suites already approved in their own security standard. The agent connected over TLS 1.2 with an approved suite.",
+      "tags": [
+        "cipher-suites",
+        "hardened-server",
+        "data-agent"
+      ],
+      "created_at": "2026-04-28",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-047",
+      "family_id": "connectivity-f08",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Connector to legacy loyalty server fails after connector upgrade",
+      "description": "Following the connector framework upgrade, pulls from the customer's ten-year-old loyalty server fail with 'unsupported protocol'.",
+      "resolution_notes": "Upgraded connectors require TLS 1.2 or later for outbound connections, and the loyalty server only supported TLS 1.0. The customer enabled TLS 1.2 on the server's web front end. Pulls resumed with no change to credentials.",
+      "tags": [
+        "tls-version",
+        "loyalty-server",
+        "source-connector"
+      ],
+      "created_at": "2025-07-15",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-048",
+      "family_id": "connectivity-f08",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "The failure was in the TLS handshake on the network path, not in API keys or request handling, so this is connectivity rather than api.",
+      "category": "connectivity",
+      "subject": "Reporting tool gets certificate name mismatch from the data API",
+      "description": "The customer's on-prem reporting tool connecting to api.example.net reports that the certificate was issued for a different hostname.",
+      "resolution_notes": "The tool's old runtime did not send SNI, so the product's edge returned its default certificate instead of the one for api.example.net. The customer updated the tool to a runtime version that sends SNI. The correct certificate was presented and the connection validated.",
+      "tags": [
+        "sni",
+        "certificate-mismatch",
+        "reporting-tool"
+      ],
+      "created_at": "2026-09-01",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-049",
+      "family_id": "connectivity-f09",
+      "related_group": "connectivity-g07",
+      "challenge": null,
+      "classification_rationale": "Sign-in itself still worked; the failure was the product reaching an internal-only endpoint, which is connectivity.",
+      "category": "connectivity",
+      "subject": "SAML metadata auto-refresh failing",
+      "description": "Workspace SSO settings have shown 'Could not fetch metadata from https://idp.corp.tidewater.example.com/metadata' for several days.",
+      "resolution_notes": "The metadata URL resolves only on the customer's internal DNS, so the product's auth service could not reach it to refresh. The customer published the metadata on their externally reachable federation hostname and the workspace was updated to that URL. The refresh succeeded and the last-refreshed timestamp updated.",
+      "tags": [
+        "sso",
+        "saml-metadata",
+        "internal-dns"
+      ],
+      "created_at": "2025-06-11",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-050",
+      "family_id": "connectivity-f09",
+      "related_group": "connectivity-g07",
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The signature error was only a symptom; the product could not reach the metadata endpoint to learn the new certificate, so this is connectivity rather than auth.",
+      "category": "connectivity",
+      "subject": "SSO broke after the IdP rotated its signing certificate",
+      "description": "All SSO sign-ins began failing with 'invalid signature' on the day the customer's identity team rotated the SAML signing certificate, even though metadata refresh is enabled.",
+      "resolution_notes": "Metadata refresh had been failing silently because the metadata URL was only reachable inside the customer's network, so the workspace never picked up the new signing certificate. Moved the metadata to a publicly reachable URL and triggered a refresh, which loaded the new certificate. Sign-ins succeeded immediately.",
+      "tags": [
+        "sso",
+        "certificate-rollover",
+        "metadata-refresh"
+      ],
+      "created_at": "2025-06-04",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-051",
+      "family_id": "connectivity-f09",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "OIDC configuration test times out",
+      "description": "When the customer's admin clicks 'Test configuration' for OIDC, it fails after 15 seconds with 'timed out fetching /.well-known/openid-configuration'.",
+      "resolution_notes": "The customer's identity gateway only accepts requests from allow-listed networks, and the product's auth service egress range 198.51.100.192/28 was not included. The customer added that range for the discovery and key endpoints. The configuration test passed and test users signed in.",
+      "tags": [
+        "oidc",
+        "discovery-endpoint",
+        "allow-list"
+      ],
+      "created_at": "2026-02-17",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-052",
+      "family_id": "connectivity-f09",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": "Credentials and assertions were fine; browsers outside the office could not reach the IdP, so this is connectivity rather than auth.",
+      "category": "connectivity",
+      "subject": "SSO works in the office, fails at home",
+      "description": "Customer's staff can sign in through SSO at the office but get a browser timeout on the identity provider page when working from home without VPN.",
+      "resolution_notes": "The customer's on-prem federation server was only reachable on the internal network, so browsers outside could not complete the redirect. The customer published the federation server through their reverse proxy for external access, protected by their usual MFA policy. Remote staff now complete sign-in without VPN.",
+      "tags": [
+        "sso",
+        "federation-server",
+        "remote-access"
+      ],
+      "created_at": "2025-03-25",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-053",
+      "family_id": "connectivity-f09",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "OIDC sign-ins fail: IdP key endpoint certificate expired",
+      "description": "SSO through OIDC fails for the whole workspace, and the auth log shows 'certificate has expired' when retrieving the IdP's signing keys.",
+      "resolution_notes": "The TLS certificate on the customer's IdP host serving the JWKS endpoint had expired, so the product could not fetch signing keys. The customer renewed the certificate on the IdP host. Key retrieval succeeded and sign-ins recovered without any change to the OIDC client settings.",
+      "tags": [
+        "oidc",
+        "jwks",
+        "expired-certificate"
+      ],
+      "created_at": "2026-08-12",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-054",
+      "family_id": "connectivity-f09",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "IdP key endpoint returns an HTML login page to the product",
+      "description": "OIDC sign-in fails with 'invalid JWKS response'; fetching the key URL from outside the customer's network returns their access portal's login page instead.",
+      "resolution_notes": "The customer's web access gateway redirected unauthenticated requests from unknown networks to its portal, including machine requests for public signing keys. The customer added a gateway rule letting the product's auth egress range reach the JWKS path without redirection. The product now receives the key set and sign-ins work.",
+      "tags": [
+        "oidc",
+        "jwks",
+        "access-gateway"
+      ],
+      "created_at": "2025-11-04",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-055",
+      "family_id": "connectivity-f10",
+      "related_group": "connectivity-g09",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Custom domain certificate expired; renewal didn't happen",
+      "description": "Users opening analytics.fernway.example.com see an expired-certificate warning, although the product normally renews it automatically.",
+      "resolution_notes": "Automatic renewal relies on a DNS validation CNAME that the customer's DNS team deleted during a record cleanup, so renewal could not complete. The record was restored and the certificate reissued within minutes. Browsers show a valid certificate and renewal checks pass.",
+      "tags": [
+        "custom-domain",
+        "certificate-renewal",
+        "dns-validation"
+      ],
+      "created_at": "2025-09-30",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-056",
+      "family_id": "connectivity-f10",
+      "related_group": "connectivity-g09",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "'Your connection is not private' on our branded address",
+      "description": "Customer's staff report a privacy warning when opening their branded analytics address, while the default app.example.net address works.",
+      "resolution_notes": "The managed certificate for the custom domain had lapsed because its validation record was removed in a DNS tidy-up. Restored the record, re-triggered issuance and had the customer mark the record as required in their DNS inventory. The branded address now loads with a valid certificate.",
+      "tags": [
+        "custom-domain",
+        "managed-certificate",
+        "privacy-warning"
+      ],
+      "created_at": "2026-05-05",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-057",
+      "family_id": "connectivity-f10",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Custom domain stuck on 'Certificate pending'",
+      "description": "Customer set up insights.ridgeview.example.com and the domain status has said 'Certificate pending' for three days.",
+      "resolution_notes": "The customer's zone had a CAA record allowing only their internal certificate authority, which prevented the CA used by the product from issuing. The customer added a CAA entry for the CA named in the custom-domain guide. The certificate issued within an hour and the domain went active.",
+      "tags": [
+        "custom-domain",
+        "caa-record",
+        "certificate-issuance"
+      ],
+      "created_at": "2025-01-08",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-058",
+      "family_id": "connectivity-f10",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Custom domain shows 'workspace not found'",
+      "description": "The customer's branded URL now shows a generic 'workspace not found' page, while their workspace is reachable at app.example.net.",
+      "resolution_notes": "The CNAME pointed to the legacy target domains.example.net, which was retired after its migration notice period. The customer updated the CNAME to the current target shown in the custom-domain settings. The branded URL loads their workspace.",
+      "tags": [
+        "custom-domain",
+        "cname",
+        "legacy-target"
+      ],
+      "created_at": "2025-07-09",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-059",
+      "family_id": "connectivity-f10",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Custom domain stopped working after our edge change",
+      "description": "Customer's branded address stopped responding after our edge network change, although they say their DNS setup was 'never touched'.",
+      "resolution_notes": "The customer had configured an A record pointing to an edge IP address instead of the documented CNAME, so it broke when edge addresses changed. Replaced the A record with a CNAME to the documented target. The domain resolves again and will follow future edge changes.",
+      "tags": [
+        "custom-domain",
+        "a-record",
+        "edge-change"
+      ],
+      "created_at": "2026-01-27",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-060",
+      "family_id": "connectivity-f10",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The domain did not resolve at all, which is DNS; choosing how links display the custom domain would be workspace_admin.",
+      "category": "connectivity",
+      "subject": "Custom domain record 'added' but verification never completes",
+      "description": "The customer added the CNAME for reports.starling.example.org a week ago, but verification still fails and lookups return nothing.",
+      "resolution_notes": "The record had been created at the domain registrar, while the domain's nameservers are delegated to a separate DNS hosting provider, so it was never published. The customer created the CNAME in the authoritative zone and confirmed it with a query against the authoritative nameserver. Verification completed within minutes.",
+      "tags": [
+        "custom-domain",
+        "authoritative-dns",
+        "verification"
+      ],
+      "created_at": "2026-10-06",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-061",
+      "family_id": "connectivity-f11",
+      "related_group": "connectivity-g10",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Agent uploads failing after move to EU data region",
+      "description": "Since the customer's workspace moved to the EU data region, the on-prem agent fails every upload with 'connection blocked' from their egress firewall.",
+      "resolution_notes": "The customer's egress firewall allowed ingest.example.net but not the regional ingest.eu.example.net used after the move. The network team added the regional hostname to the egress allow-list. Uploads resumed and the backlog cleared.",
+      "tags": [
+        "data-agent",
+        "egress-allow-list",
+        "data-residency"
+      ],
+      "created_at": "2025-05-14",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-062",
+      "family_id": "connectivity-f11",
+      "related_group": "connectivity-g10",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Store server uploads stopped after data residency change",
+      "description": "Scheduled uploads from the customer's store server cluster have failed since last weekend's data residency change, with the error 'proxy denied: destination not in policy'.",
+      "resolution_notes": "The proxy policy listed only the global ingestion hostname; after the move, uploads target ingest.eu.example.net, which was missing from the policy. Added the regional hostname to the proxy destination policy. Uploads completed on the next schedule.",
+      "tags": [
+        "data-agent",
+        "proxy-policy",
+        "regional-endpoint"
+      ],
+      "created_at": "2025-05-21",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-063",
+      "family_id": "connectivity-f11",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Old agent version blocked on port 8443",
+      "description": "An agent installed years ago at a distribution centre cannot connect after the customer tightened egress rules to port 443 only.",
+      "resolution_notes": "Older agent versions upload over port 8443, which the new egress policy blocked. Upgraded the agent to the current version, which uses 443. The agent connected and uploads resumed.",
+      "tags": [
+        "data-agent",
+        "port-8443",
+        "agent-upgrade"
+      ],
+      "created_at": "2026-03-03",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-064",
+      "family_id": "connectivity-f11",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Agent connections dropped a few times a day by IP-based rule",
+      "description": "The customer's firewall lets the agent reach a fixed list of IP addresses for ingest.example.net, and a few times a day its connections are dropped.",
+      "resolution_notes": "The ingestion endpoint is served from an anycast edge whose addresses vary, so the static IP list only matched some connections. The customer replaced the IP list with an FQDN-based rule for the ingestion hostname, as the network requirements recommend. Connections have been stable for two weeks.",
+      "tags": [
+        "data-agent",
+        "fqdn-rule",
+        "anycast"
+      ],
+      "created_at": "2025-12-02",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-065",
+      "family_id": "connectivity-f11",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "The product's endpoints were not under load; connections failed at the customer's NAT gateway, so this is connectivity rather than perf.",
+      "category": "connectivity",
+      "subject": "Agent uploads time out during the evening batch",
+      "description": "Agent uploads from the customer's cloud-hosted server time out only during the 8 pm batch, when 40 stores upload at once.",
+      "resolution_notes": "The customer's cloud NAT gateway ran out of source ports when the agent opened many parallel connections, so new connections were dropped. Enabled connection reuse in the agent and reduced parallel streams, and the customer increased the NAT port allocation. The evening batch has completed without timeouts for a week.",
+      "tags": [
+        "data-agent",
+        "nat-gateway",
+        "port-exhaustion"
+      ],
+      "created_at": "2026-07-28",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-066",
+      "family_id": "connectivity-f11",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Agent uploads but never picks up configuration changes",
+      "description": "The customer changed the agent's schedule in the product a week ago, but the on-prem agent keeps running the old schedule and shows 'unmanaged' in the console.",
+      "resolution_notes": "The egress allow-list included the data hostname but not agents.example.net, which the agent uses to fetch its configuration, so it kept running on cached settings. The network team added the control-plane hostname. The agent showed 'managed' and applied the new schedule.",
+      "tags": [
+        "data-agent",
+        "control-plane",
+        "egress-allow-list"
+      ],
+      "created_at": "2025-10-28",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-067",
+      "family_id": "connectivity-f12",
+      "related_group": "connectivity-g05",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Whole office gets 'Access restricted by your organization's network policy'",
+      "description": "Everyone at the customer's Leeds office sees 'Access restricted by your organization's network policy' straight after signing in.",
+      "resolution_notes": "The office's public address changed when their ISP contract switched, and the workspace IP allow-list still contained the old address. A workspace admin connecting from an allowed location added the new 203.0.113.64/28 range. Office users signed in normally.",
+      "tags": [
+        "ip-allow-list",
+        "isp-change",
+        "office-access"
+      ],
+      "created_at": "2025-08-12",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-068",
+      "family_id": "connectivity-f12",
+      "related_group": "connectivity-g05",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Headquarters locked out Monday after weekend circuit upgrade",
+      "description": "Following a weekend circuit upgrade at HQ, nobody at headquarters can reach dashboards, and the block message appears right after login.",
+      "resolution_notes": "The upgraded circuit came with a new public IP block that was not on the workspace allow-list. The customer's admin, signing in from a branch office already on the list, added the new block. HQ users regained access.",
+      "tags": [
+        "ip-allow-list",
+        "circuit-upgrade",
+        "headquarters"
+      ],
+      "created_at": "2026-02-09",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-069",
+      "family_id": "connectivity-f12",
+      "related_group": "connectivity-g05",
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "No admin can reach the workspace after office IP change",
+      "description": "Agent summary: the customer's only office changed public IP overnight, and every admin is now blocked by the workspace IP allow-list, so nobody can update it.",
+      "resolution_notes": "The allow-list held only the previous office address. After verifying the request through the customer's registered security contact, support added the new address as a temporary entry with a 72-hour expiry; the customer then entered their confirmed permanent range and the temporary entry lapsed. Admin and user access were confirmed from the new address.",
+      "tags": [
+        "ip-allow-list",
+        "temporary-entry",
+        "admin-lockout"
+      ],
+      "created_at": "2026-06-30",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-070",
+      "family_id": "connectivity-f12",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "New IP allow-list blocks most of the office, but not everyone",
+      "description": "After an admin enabled the IP allow-list, some staff can reach the app from the office while most colleagues on the same network are blocked, and who gets in changes from hour to hour.",
+      "resolution_notes": "The office egresses through a pool of NAT addresses, but the allow-list entry was typed as 203.0.113.10/32 instead of the pool's 203.0.113.0/28, so only connections leaving through that one address were allowed. Corrected the entry to the full range. All office users have access.",
+      "tags": [
+        "ip-allow-list",
+        "cidr",
+        "nat-pool"
+      ],
+      "created_at": "2025-04-09",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-071",
+      "family_id": "connectivity-f12",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Remote staff blocked even though the VPN address is allowed",
+      "description": "Customer allowed their VPN egress address in the workspace IP allow-list, but remote employees connected to the VPN are still blocked.",
+      "resolution_notes": "The VPN uses split tunnelling, so traffic to the product went straight out of employees' home connections instead of through the allowed VPN address. The customer added the product's domains to the VPN's tunnelled routes. Remote users on VPN now egress from the allowed address and can sign in.",
+      "tags": [
+        "ip-allow-list",
+        "split-tunnel",
+        "remote-workers"
+      ],
+      "created_at": "2025-11-11",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-072",
+      "family_id": "connectivity-f12",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "IP allow-list blocks office users after IPv6 rollout",
+      "description": "The day the customer enabled IPv6 at their main office, users there started getting the network-policy block page, even though the office IPv4 range is on the allow-list.",
+      "resolution_notes": "Browsers preferred IPv6 once it was available, so requests arrived from the office's IPv6 prefix, which was not on the allow-list. The admin added the office prefix 2001:db8:4c2::/48 alongside the IPv4 range. Users are allowed over both protocols.",
+      "tags": [
+        "ip-allow-list",
+        "ipv6",
+        "office-network"
+      ],
+      "created_at": "2026-09-15",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-073",
+      "family_id": "connectivity-f13",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Agent can't connect but a browser on the same server can",
+      "description": "The on-prem agent on a newly built server fails with 'connect timeout', while a browser on that server opens the app quickly.",
+      "resolution_notes": "The server received an IPv6 address but the network's IPv6 default route was missing; browsers fell back to IPv4 quickly, while the agent tried IPv6 only and timed out. The network team added the missing IPv6 default route on the edge router. The agent connects over IPv6 and uploads complete.",
+      "tags": [
+        "ipv6",
+        "routing",
+        "data-agent"
+      ],
+      "created_at": "2025-02-19",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-074",
+      "family_id": "connectivity-f13",
+      "related_group": "connectivity-g11",
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": "Responses were dropped on the network path rather than being slow to generate, so this is connectivity rather than perf.",
+      "category": "connectivity",
+      "subject": "Dashboards never finish loading at the Dublin branch",
+      "description": "At the Dublin branch, login and the dashboard list work, but dashboards with many widgets hang forever; the same dashboards load in seconds at other offices.",
+      "resolution_notes": "Dublin connects through a tunnel with a 1400-byte MTU, and the branch firewall blocked ICMP 'fragmentation needed' messages, so large responses were silently dropped (a path-MTU black hole). The network team enabled TCP MSS clamping on the tunnel and allowed the required ICMP type. Dashboards load normally at the branch.",
+      "tags": [
+        "mtu",
+        "path-mtu-discovery",
+        "branch-office"
+      ],
+      "created_at": "2025-09-17",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-075",
+      "family_id": "connectivity-f13",
+      "related_group": "connectivity-g11",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "File uploads from one store server stall at 0%",
+      "description": "Uploads from one store's back-office server stall at 0% and eventually time out, but small test files of a few kilobytes go through.",
+      "resolution_notes": "That store sits behind a site-to-site tunnel with a reduced MTU, and the ICMP messages needed for path-MTU discovery were filtered, so full-size packets never arrived. Enabling MSS clamping on the tunnel interface fixed it, and a 400 MB upload completed in the normal time.",
+      "tags": [
+        "mtu",
+        "site-to-site-tunnel",
+        "uploads"
+      ],
+      "created_at": "2026-04-14",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-076",
+      "family_id": "connectivity-f13",
+      "related_group": "connectivity-g11",
+      "challenge": "related_symptom_different_product",
+      "classification_rationale": "The export files were generated correctly; delivery stalled on the network path, so this is connectivity rather than export.",
+      "category": "connectivity",
+      "subject": "Large report downloads freeze partway at one branch",
+      "description": "PDF and Excel downloads larger than about 1 MB freeze partway through for users at the customer's Lisbon branch, while smaller downloads are fine.",
+      "resolution_notes": "The branch tunnel's MTU was below standard and its firewall discarded ICMP fragmentation-needed messages, creating a path-MTU black hole for large responses. MSS clamping on the branch tunnel resolved it; a 25 MB PDF downloaded successfully.",
+      "tags": [
+        "mtu",
+        "downloads",
+        "branch-office"
+      ],
+      "created_at": "2026-11-05",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-077",
+      "family_id": "connectivity-f13",
+      "related_group": null,
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Store tablets on IPv6-only network can't get live updates",
+      "description": "On the customer's new IPv6-only store network, tablets load dashboards but live tiles never connect.",
+      "resolution_notes": "The real-time host live.example.net had no AAAA record, and DNS64/NAT64 had not been enabled on the new store VLAN, so tablets could not reach it. As a workaround the customer enabled DNS64/NAT64 on that VLAN, which restored live tiles; publishing native IPv6 records for the real-time host is scheduled on our side. Live tiles updated on test tablets.",
+      "tags": [
+        "ipv6",
+        "nat64",
+        "live-tiles"
+      ],
+      "created_at": "2026-08-25",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-078",
+      "family_id": "connectivity-f13",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "Session settings were fine; connections were reset by asymmetric routing, so this is connectivity rather than auth.",
+      "category": "connectivity",
+      "subject": "Connections drop every few minutes since SD-WAN rollout",
+      "description": "Since the SD-WAN rollout, store staff say the app 'kicks them out' every few minutes, and they assumed their sessions were expiring.",
+      "resolution_notes": "The new SD-WAN policy sent outbound traffic over one link and return traffic over another, so the stateful firewall saw half-open connections and reset them. The network team corrected the routing policy to keep flows symmetric. Sessions were never expiring, and after the change staff stayed connected through a full shift.",
+      "tags": [
+        "sd-wan",
+        "asymmetric-routing",
+        "connection-reset"
+      ],
+      "created_at": "2025-03-31",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-079",
+      "family_id": "connectivity-f14",
+      "related_group": "connectivity-g12",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "App shell shows 'Failed to load application resources'",
+      "description": "Since this morning the customer's employees see the empty app shell with 'Failed to load application resources' and no dashboards.",
+      "resolution_notes": "The customer's secure web gateway had classified our new asset host cdn.example.net as newly registered and blocked it. The customer added the product's documented domains to the gateway's allow policy and submitted a recategorisation request. The app loaded normally across the office.",
+      "tags": [
+        "web-filter",
+        "secure-web-gateway",
+        "asset-cdn"
+      ],
+      "created_at": "2025-06-18",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-080",
+      "family_id": "connectivity-f14",
+      "related_group": "connectivity-g12",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Distribution centre staff get a block page from email links",
+      "description": "Since notification emails switched to short links, staff at the customer's distribution centre who click a dashboard link get their gateway's 'Uncategorized site blocked' page.",
+      "resolution_notes": "Email links now pass through the newer short-link host go.example.net, which the customer's web gateway treated as uncategorised and blocked by policy. The customer added go.example.net to the allow policy alongside the product's other documented domains. Links open the dashboards directly.",
+      "tags": [
+        "web-filter",
+        "uncategorized-domain",
+        "email-links"
+      ],
+      "created_at": "2025-06-25",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-081",
+      "family_id": "connectivity-f14",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Member file upload blocked by data-loss prevention page",
+      "description": "Uploading the loyalty member file through the browser returns the customer's DLP block page: 'Upload of personal data to unsanctioned application'.",
+      "resolution_notes": "The customer's DLP policy blocks uploads containing email addresses to applications not on the sanctioned list, and the product had never been added. The customer's security team added the product's ingestion domain as a sanctioned destination, so uploads are still inspected and logged but allowed. The member file uploaded successfully.",
+      "tags": [
+        "dlp",
+        "sanctioned-apps",
+        "file-upload"
+      ],
+      "created_at": "2026-02-10",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-082",
+      "family_id": "connectivity-f14",
+      "related_group": null,
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": "The widget resources were blocked from loading by the customer's content filter rather than drawn incorrectly, so this is connectivity rather than render.",
+      "category": "connectivity",
+      "subject": "Some widget types missing on managed browsers",
+      "description": "On laptops with the customer's managed browser profile, three widget types never appear and leave gaps on dashboards; unmanaged browsers show everything.",
+      "resolution_notes": "The managed profile includes a content-blocking extension whose filter list blocks script paths containing '/analytics/', which matched the bundle for those widget types. As a workaround the customer's IT team added the product's domains to the extension's allow-list for that profile; our front-end team is renaming the asset path in an upcoming release so it no longer matches common filter lists. Widgets display on managed laptops.",
+      "tags": [
+        "browser-extension",
+        "content-blocking",
+        "managed-browser"
+      ],
+      "created_at": "2025-09-02",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-083",
+      "family_id": "connectivity-f14",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "connectivity",
+      "subject": "Stores get 'Access denied by policy' while HQ works",
+      "description": "All store staff see 'Access denied by policy: Business Applications' when opening the app, while HQ uses it normally.",
+      "resolution_notes": "A recent network change applied the guest Wi-Fi filtering policy to the store staff network, and that policy blocks the business-applications category. The customer reassigned the staff network to its correct policy. Store staff regained access.",
+      "tags": [
+        "web-filter",
+        "policy-assignment",
+        "store-network"
+      ],
+      "created_at": "2026-05-26",
+      "status": "resolved"
+    },
+    {
+      "key": "connectivity-084",
+      "family_id": "connectivity-f14",
+      "related_group": null,
+      "challenge": "related_symptom_different_product",
+      "classification_rationale": "Report generation and email delivery worked; the download was blocked by the customer's web filter, so this is connectivity rather than export.",
+      "category": "connectivity",
+      "subject": "Scheduled report download links open a block page",
+      "description": "Links in scheduled report emails open the customer's gateway block page 'File sharing sites are not permitted', although the reports themselves were generated.",
+      "resolution_notes": "Report files are served from files.example.net, which the customer's gateway categorised as file sharing. The customer added files.example.net to the allow policy as a sanctioned business destination. Recipients now download reports normally.",
+      "tags": [
+        "web-filter",
+        "file-sharing-category",
+        "report-downloads"
+      ],
+      "created_at": "2026-10-27",
+      "status": "resolved"
+    }
+  ]
+}

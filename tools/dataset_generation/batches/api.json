@@ -1,0 +1,1536 @@
+{
+  "category": "api",
+  "issue_families": [
+    {
+      "family_id": "api-f01",
+      "name": "Webhook delivery timeouts and retry exhaustion",
+      "summary": "Customer endpoints that respond slowly, redirect, reject large bodies or are offline longer than the retry schedule cause webhook deliveries to be marked failed, retried or eventually dropped.",
+      "boundary_note": "These are generic product webhooks consumed by customer systems; webhooks used as an alert notification channel belong to alerts."
+    },
+    {
+      "family_id": "api-f02",
+      "name": "Webhook signature verification failures",
+      "summary": "Receivers reject genuine webhooks because the raw body is altered before HMAC verification, the signing secret was rotated unevenly, the receiver's clock drifts, or the verification code signs the wrong content.",
+      "boundary_note": "This is message-integrity verification on integration traffic, not user sign-in (auth) or TLS certificate trust (connectivity)."
+    },
+    {
+      "family_id": "api-f03",
+      "name": "Rate limiting and 429 handling",
+      "summary": "Integrations receive HTTP 429 because limits are shared across an organisation, burst limits are exceeded by parallel calls, heavy endpoints have lower limits, or clients ignore Retry-After.",
+      "boundary_note": "Requests are rejected by documented quotas rather than slowed by platform load (perf)."
+    },
+    {
+      "family_id": "api-f04",
+      "name": "Pagination consistency",
+      "summary": "Clients paging through collections miss or repeat records because of offset paging over changing data, expired cursors, silently capped page sizes or non-unique sort keys.",
+      "boundary_note": "The stored data is correct; records are lost or duplicated only in how the client walks the API, so this is api rather than data_quality or export."
+    },
+    {
+      "family_id": "api-f05",
+      "name": "Integration API key ownership, scope and expiry",
+      "summary": "Keys used by scripts and integrations stop working because they were tied to a deactivated person, lack a needed scope, expired under a rotation policy, or belong to a different environment.",
+      "boundary_note": "Keys here authenticate machine integrations against the public API; a person's own sign-in, SSO or personal API-key login problems belong to auth."
+    },
+    {
+      "family_id": "api-f06",
+      "name": "Request validation and payload format errors",
+      "summary": "Requests are rejected with 400, 413, 415 or 422 because of non-ISO dates, missing content types, enum casing, unknown fields, oversized batches or unencoded query values.",
+      "boundary_note": "The API is rejecting or misreading the caller's request format; failures of connected-source ingestion jobs are sync."
+    },
+    {
+      "family_id": "api-f07",
+      "name": "API versioning, deprecations and sunsets",
+      "summary": "Integrations break or change behaviour when a version reaches sunset, fields are renamed between versions, or the default version for unpinned requests differs from what the client expects.",
+      "boundary_note": "These are contract changes in the public API, not export file format changes (export) or product UI changes."
+    },
+    {
+      "family_id": "api-f08",
+      "name": "Server-side 5xx defects for specific request shapes",
+      "summary": "Particular inputs such as unusual characters, empty resources, oversized URLs, stale references or deploy-time connection draining make otherwise working endpoints return 500, 502 or 503.",
+      "boundary_note": "The error is raised by the API service itself for a specific request, not by sustained load (perf) or blocked network paths (connectivity)."
+    },
+    {
+      "family_id": "api-f09",
+      "name": "Idempotency, retries and concurrent write safety",
+      "summary": "Client retries without idempotency keys create duplicate objects, keys are reused with different bodies or after expiry, and concurrent updates overwrite each other without conditional requests.",
+      "boundary_note": "Duplicates come from how API writes are retried, not from inbound connector re-syncs (sync)."
+    },
+    {
+      "family_id": "api-f10",
+      "name": "Webhook event ordering, duplication and coalescing",
+      "summary": "At-least-once delivery, unordered delivery, batched payloads and event coalescing surprise consumers that assume exactly-once, in-order, one-event-per-change delivery.",
+      "boundary_note": "These are semantics of the general event stream for integrations; alert notification duplicates belong to alerts."
+    },
+    {
+      "family_id": "api-f11",
+      "name": "Webhook subscription configuration and auto-disable",
+      "summary": "Events never arrive or arrive twice because subscriptions were auto-disabled after failures, cover the wrong event types, filter out new objects, or are registered twice.",
+      "boundary_note": "Configuration of the integration event subscription, not the alert channel configuration (alerts) or export schedules (export)."
+    },
+    {
+      "family_id": "api-f12",
+      "name": "Numeric, timestamp and null serialization in responses",
+      "summary": "Correct stored values are misread by clients because of 64-bit integer precision loss, UTC timestamps, decimals returned as strings, fractional percentages or omitted null fields.",
+      "boundary_note": "Values are correct in the product and in the response; the problem is serialization and client parsing, so it is api rather than data_quality."
+    },
+    {
+      "family_id": "api-f13",
+      "name": "Asynchronous bulk job endpoints",
+      "summary": "Bulk import, export and async query jobs confuse clients through expiring result URLs, partial-success states, multi-part results, stuck statuses and removed callback parameters.",
+      "boundary_note": "These are API job mechanics used by customer code; scheduled report deliveries and UI exports are export."
+    }
+  ],
+  "related_groups": [
+    {
+      "group_id": "api-g01",
+      "family_id": "api-f02",
+      "shared_root_cause": "A JSON body-parsing middleware in the customer's receiving service parsed and re-serialized the webhook body before signature verification, so the HMAC was computed over different bytes than were signed."
+    },
+    {
+      "group_id": "api-g02",
+      "family_id": "api-f03",
+      "shared_root_cause": "The organisation-wide request quota is shared by all API keys in the workspace, and a status-polling script calling the API every second consumed most of it, starving other integrations."
+    },
+    {
+      "group_id": "api-g03",
+      "family_id": "api-f04",
+      "shared_root_cause": "The client paged through a frequently changing collection with offset pagination, so inserts and updates during the walk shifted rows between pages, skipping some and repeating others."
+    },
+    {
+      "group_id": "api-g04",
+      "family_id": "api-f05",
+      "shared_root_cause": "Integration keys had been created under a person's account, and deactivating that person during offboarding correctly revoked every key they owned."
+    },
+    {
+      "group_id": "api-g05",
+      "family_id": "api-f07",
+      "shared_root_cause": "The v1 reports endpoints reached their announced sunset date and now return 410 Gone, but the integration had not been migrated to v2."
+    },
+    {
+      "group_id": "api-g06",
+      "family_id": "api-f11",
+      "shared_root_cause": "The webhook subscription was automatically disabled after 72 hours of consecutive delivery failures, and it stayed disabled after the customer's endpoint recovered because nobody re-enabled it."
+    },
+    {
+      "group_id": "api-g07",
+      "family_id": "api-f12",
+      "shared_root_cause": "Order and line identifiers are 64-bit integers returned as JSON numbers, and the customer's JavaScript code parsed them as double-precision numbers, rounding IDs above 2^53."
+    },
+    {
+      "group_id": "api-g08",
+      "family_id": "api-f09",
+      "shared_root_cause": "The customer's HTTP client retried POST requests that had timed out on the client side without sending an Idempotency-Key, so requests that had actually succeeded were executed again."
+    },
+    {
+      "group_id": "api-g09",
+      "family_id": "api-f13",
+      "shared_root_cause": "Bulk job result download URLs are pre-signed and expire 15 minutes after the job status call that returned them, and the client stored the URL and downloaded it later."
+    }
+  ],
+  "tickets": [
+    {
+      "key": "api-001",
+      "family_id": "api-f01",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Webhook delivery log full of timeouts but our endpoint received the events",
+      "description": "Customer's developer says their delivery log shows most order.updated events as 'failed - timeout after 10s', yet their service did receive and process them, some more than once.",
+      "resolution_notes": "The customer's handler enriched each event with several downstream lookups before responding, taking 12-20 seconds, so our 10-second timeout recorded failures and scheduled retries. Advised returning 2xx immediately after storing the event and processing it asynchronously, and shared the documented timeout. After their change, the delivery log showed 100% success over two days with no repeat deliveries.",
+      "tags": [
+        "webhooks",
+        "delivery-timeout",
+        "async-processing"
+      ],
+      "created_at": "2025-01-21",
+      "status": "resolved"
+    },
+    {
+      "key": "api-002",
+      "family_id": "api-f01",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Events missing after our planned maintenance",
+      "description": "The customer took their integration endpoint offline for a six-hour maintenance window on Sunday. When it came back, events from the first two hours of the window never arrived.",
+      "resolution_notes": "Our retry schedule stops after about four hours, so events from early in the window exhausted their retries and were marked dropped. Used the event replay endpoint to redeliver everything from the window and showed the customer how to self-serve replays. Their endpoint confirmed receipt of all 3,412 replayed events; an optional 24-hour retry window was enabled for their subscription.",
+      "tags": [
+        "webhooks",
+        "retry-exhaustion",
+        "event-replay"
+      ],
+      "created_at": "2025-04-07",
+      "status": "resolved"
+    },
+    {
+      "key": "api-003",
+      "family_id": "api-f01",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Webhooks failing with HTTP 301",
+      "description": "Agent summary: all deliveries to https://hooks.example.com/analytics have failed since Thursday. The delivery log shows status 301 for each attempt.",
+      "resolution_notes": "The customer reorganised their routes so the URL now redirects to a version with a trailing slash. Webhook delivery does not follow redirects, by design, to avoid sending signed payloads to unexpected hosts. Updated the subscription to the final URL, then replayed the failed events, which all returned 200.",
+      "tags": [
+        "webhooks",
+        "http-redirect",
+        "endpoint-url"
+      ],
+      "created_at": "2025-07-29",
+      "status": "resolved"
+    },
+    {
+      "key": "api-004",
+      "family_id": "api-f01",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Delivery log says delivered but our system never got the events",
+      "description": "Customer insists several dataset.refreshed events never reached them, but our delivery log shows every one as delivered with a 200 response.",
+      "resolution_notes": "Their endpoint's framework caught an exception in the event handler and still returned 200 with an error message in the body, so our side correctly recorded successful delivery. Showed them the stored response bodies for the affected events, and they fixed the handler to return 500 on processing errors so retries happen. Replayed the affected events and the customer confirmed they were processed.",
+      "tags": [
+        "webhooks",
+        "false-success",
+        "error-handling"
+      ],
+      "created_at": "2025-10-01",
+      "status": "resolved"
+    },
+    {
+      "key": "api-005",
+      "family_id": "api-f01",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Some webhook deliveries rejected with 413",
+      "description": "Customer sees intermittent 413 Payload Too Large responses from their own endpoint for catalog.updated events. Small updates go through fine.",
+      "resolution_notes": "Large catalogue updates produced payloads up to 4 MB, above the 1 MB body limit configured on the customer's receiving proxy. Enabled thin payloads for the subscription, which send the event metadata plus a link to fetch the full change list through the API. All catalog.updated deliveries now succeed and their consumer fetches details on demand.",
+      "tags": [
+        "webhooks",
+        "payload-too-large",
+        "thin-payload"
+      ],
+      "created_at": "2026-02-03",
+      "status": "resolved"
+    },
+    {
+      "key": "api-006",
+      "family_id": "api-f01",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "Delayed product webhooks to an integration endpoint are api; the same delay on an alert notification channel would be alerts.",
+      "category": "api",
+      "subject": "Webhook events arriving 20-40 minutes late",
+      "description": "The customer's order-sync integration normally gets order events within seconds, but on Black Friday many arrived 20-40 minutes after the order was placed.",
+      "resolution_notes": "Deliveries for several tenants shared one ordered delivery queue, and one tenant's very slow endpoint held up others during the traffic spike. Moved webhook delivery to per-subscriber partitions so a slow receiver only delays its own events. During the next high-traffic weekend the customer's delivery delay stayed under 10 seconds.",
+      "tags": [
+        "webhooks",
+        "delivery-latency",
+        "per-subscriber-queue"
+      ],
+      "created_at": "2025-12-02",
+      "status": "resolved"
+    },
+    {
+      "key": "api-007",
+      "family_id": "api-f02",
+      "related_group": "api-g01",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Every webhook fails signature check since moving behind new gateway",
+      "description": "Customer's team moved their webhook receiver behind a new API gateway last week. Since then, every event fails their HMAC signature verification and is discarded.",
+      "resolution_notes": "The gateway's request transformation step parsed the JSON body and re-serialized it, changing whitespace and key order before the receiver computed the HMAC. Advised verifying the signature against the raw body bytes before any parsing, or disabling the transformation for that route. After they disabled it, signatures validated for all test and live events.",
+      "tags": [
+        "webhook-signature",
+        "hmac",
+        "raw-body"
+      ],
+      "created_at": "2025-03-04",
+      "status": "resolved"
+    },
+    {
+      "key": "api-008",
+      "family_id": "api-f02",
+      "related_group": "api-g01",
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Signature mismatch only for stores with accented names",
+      "description": "The customer says webhook signatures validate for most events, but events about stores like 'Café Lumière' always fail verification.",
+      "resolution_notes": "A body-parsing middleware in their receiver parsed the JSON and re-serialized it, escaping non-ASCII characters as \\u sequences, so the bytes being verified differed from the signed bytes only when accented characters were present. Moved signature verification ahead of the middleware so it uses the raw request body. Events for accented store names now verify correctly.",
+      "tags": [
+        "webhook-signature",
+        "middleware",
+        "unicode-escaping"
+      ],
+      "created_at": "2025-03-18",
+      "status": "resolved"
+    },
+    {
+      "key": "api-009",
+      "family_id": "api-f02",
+      "related_group": "api-g01",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "HMAC verification passes in staging, fails in production",
+      "description": "Customer's developer reports the same receiver code verifies webhook signatures in their staging environment but rejects all events in production.",
+      "resolution_notes": "Production had a global JSON parsing middleware enabled that rewrote the request body before the verification step; staging did not. Configured the webhook route to keep the raw body and verify against it before parsing. Production verification succeeded for a test event and for live traffic the next hour.",
+      "tags": [
+        "webhook-signature",
+        "environment-difference",
+        "raw-body"
+      ],
+      "created_at": "2025-04-01",
+      "status": "resolved"
+    },
+    {
+      "key": "api-010",
+      "family_id": "api-f02",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Half of webhooks rejected after rotating signing secret",
+      "description": "After the customer rotated their webhook signing secret, roughly half of their events started failing verification. They run two consumer services behind a load balancer.",
+      "resolution_notes": "Only one of the two consumer services had been updated with the new secret. Showed them how to use the 24-hour rotation grace period, during which each event carries signatures for both the old and new secret, and they updated the second service. All events verified on both services after the update.",
+      "tags": [
+        "webhook-signature",
+        "secret-rotation",
+        "grace-period"
+      ],
+      "created_at": "2025-08-19",
+      "status": "resolved"
+    },
+    {
+      "key": "api-011",
+      "family_id": "api-f02",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "Signature timestamps are rejected because of the receiver's clock, not a network or certificate issue, so this stays api.",
+      "category": "api",
+      "subject": "Webhooks rejected as 'timestamp outside tolerance'",
+      "description": "Customer's receiver logs 'signature timestamp outside tolerance' for every event since Monday, even though signatures are computed correctly.",
+      "resolution_notes": "The receiving host's clock had drifted about seven minutes after its time-sync service stopped, so our timestamps looked older than the 5-minute replay tolerance. The customer restored time synchronisation on the host. Verification passed again for new events, and we suggested monitoring clock drift on webhook receivers.",
+      "tags": [
+        "webhook-signature",
+        "clock-drift",
+        "replay-tolerance"
+      ],
+      "created_at": "2026-01-14",
+      "status": "resolved"
+    },
+    {
+      "key": "api-012",
+      "family_id": "api-f02",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Custom webhook receiver never validates any signature",
+      "description": "A customer building their first webhook receiver says none of the signatures match, including on the test event sent from settings.",
+      "resolution_notes": "Their code computed the HMAC over the parsed 'data' object only, while signatures cover the timestamp, a period, and the full raw body, as documented. Shared the reference verification snippet and walked through the signed-content format. Their receiver validated the test event and subsequent live events.",
+      "tags": [
+        "webhook-signature",
+        "signed-content",
+        "integration-setup"
+      ],
+      "created_at": "2026-06-16",
+      "status": "resolved"
+    },
+    {
+      "key": "api-013",
+      "family_id": "api-f03",
+      "related_group": "api-g02",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Nightly extract hitting 429s with unchanged volume",
+      "description": "The customer's nightly extract job has started failing with 429 Too Many Requests. They say the job makes the same number of calls it always has.",
+      "resolution_notes": "The rate limit is an organisation-wide bucket shared by all keys, and a new status-polling script from another team was calling the API once per second around the clock, using most of the quota. Helped the customer move that script to webhook events and confirmed the nightly job then completed without any 429s.",
+      "tags": [
+        "rate-limit",
+        "shared-quota",
+        "polling"
+      ],
+      "created_at": "2025-05-13",
+      "status": "resolved"
+    },
+    {
+      "key": "api-014",
+      "family_id": "api-f03",
+      "related_group": "api-g02",
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Barely-used API key gets 429 responses",
+      "description": "Customer's BI engineer points out that their key made fewer than 200 calls today but is still receiving 429 responses. They believe the limit is applied incorrectly.",
+      "resolution_notes": "Limits apply to the organisation, not individual keys, and the org usage report showed a single key from a wallboard script responsible for 85% of requests through per-second polling. The customer throttled that script to once per minute. The BI key's requests have succeeded without throttling since.",
+      "tags": [
+        "rate-limit",
+        "org-quota",
+        "usage-report"
+      ],
+      "created_at": "2025-05-27",
+      "status": "resolved"
+    },
+    {
+      "key": "api-015",
+      "family_id": "api-f03",
+      "related_group": "api-g02",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Rate-limit errors started when the status wall went live",
+      "description": "Customer noticed that 429 errors across their integrations began the same day their marketing team launched a live status wall that reads campaign metrics from our API.",
+      "resolution_notes": "The status wall polled six endpoints every second, consuming the organisation's shared request quota that every integration draws from. Reconfigured the wall to refresh once a minute and subscribe to metric update events instead. The other integrations stopped receiving 429s the same afternoon.",
+      "tags": [
+        "rate-limit",
+        "status-wall",
+        "shared-quota"
+      ],
+      "created_at": "2025-06-03",
+      "status": "resolved"
+    },
+    {
+      "key": "api-016",
+      "family_id": "api-f03",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Integration stays throttled for minutes after one 429",
+      "description": "Once the customer's sync script receives a single 429, it keeps getting 429s for several minutes. They expected the limit to reset after a second or two.",
+      "resolution_notes": "The script ignored the Retry-After header and retried immediately in a tight loop, and each rejected call still counted toward the sliding window, extending the throttle. Updated their client to honour Retry-After with jittered backoff. A load test showed it now recovers within the indicated wait time.",
+      "tags": [
+        "rate-limit",
+        "retry-after",
+        "backoff"
+      ],
+      "created_at": "2025-09-30",
+      "status": "resolved"
+    },
+    {
+      "key": "api-017",
+      "family_id": "api-f03",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "429 burst limit errors from parallel batch job",
+      "description": "Customer's batch job fires 200 requests at once at 02:00 and about two thirds fail with 429 'burst limit exceeded', although they are far below their hourly quota.",
+      "resolution_notes": "Besides the hourly quota there is a per-second burst limit of 50 requests, which the job exceeded by launching everything concurrently. Recommended capping client concurrency at 20 with a small queue. The job now completes in about 30 seconds with no 429 responses.",
+      "tags": [
+        "rate-limit",
+        "burst-limit",
+        "client-concurrency"
+      ],
+      "created_at": "2026-03-10",
+      "status": "resolved"
+    },
+    {
+      "key": "api-018",
+      "family_id": "api-f03",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Only the export endpoint returns 429",
+      "description": "Customer reports POST /v2/exports returns 429 after about ten calls, while all other endpoints work normally. They create one export per store, around 300 per night.",
+      "resolution_notes": "Export creation has its own lower limit of 10 requests per minute because each request starts a heavy job. Showed the customer the multi-store export request that accepts a list of store IDs and produces one file per store. Their nightly run now needs 3 requests instead of 300 and completes without throttling.",
+      "tags": [
+        "rate-limit",
+        "endpoint-limit",
+        "export-endpoint"
+      ],
+      "created_at": "2026-07-07",
+      "status": "resolved"
+    },
+    {
+      "key": "api-019",
+      "family_id": "api-f04",
+      "related_group": "api-g03",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Orders missing when paging through the orders API",
+      "description": "Customer's reconciliation script pages through GET /v2/orders with offset and limit during the trading day and finds a handful of orders missing every run.",
+      "resolution_notes": "Offset pagination over a collection that changes while it is being read shifts rows between pages, so some orders slid into pages the script had already passed. Switched the script to cursor pagination ordered by a stable key, with an updated_since checkpoint for incremental runs. Three consecutive runs reconciled exactly.",
+      "tags": [
+        "pagination",
+        "offset-pagination",
+        "cursor-pagination"
+      ],
+      "created_at": "2025-02-18",
+      "status": "resolved"
+    },
+    {
+      "key": "api-020",
+      "family_id": "api-f04",
+      "related_group": "api-g03",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Same shopper appears on two different pages",
+      "description": "The customer's developer noticed their CRM import of shoppers from our API sometimes contains the same shopper twice, on consecutive pages.",
+      "resolution_notes": "The import used offset paging sorted by last update, and shoppers updated during the import moved to later positions and were read again. Moved the import to cursor-based pagination, which keeps a consistent position. The next full import produced no duplicate shopper IDs.",
+      "tags": [
+        "pagination",
+        "duplicate-records",
+        "offset-pagination"
+      ],
+      "created_at": "2025-03-11",
+      "status": "resolved"
+    },
+    {
+      "key": "api-021",
+      "family_id": "api-f04",
+      "related_group": "api-g03",
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The dashboard and stored data were correct; the gap came from how the client paged the API, so this is api rather than data_quality or export.",
+      "category": "api",
+      "subject": "API extract total differs from dashboard by a few dozen rows",
+      "description": "Customer compared returns pulled through the API with the returns dashboard and found the API extract short by 30-40 rows on busy days, but exact on quiet days.",
+      "resolution_notes": "Their extract used offset pagination while new returns were still being recorded, so rows shifted between pages and some were never read. Moved the extract to cursor pagination and ran it after the business day closed. The next week's extracts matched the dashboard exactly.",
+      "tags": [
+        "pagination",
+        "reconciliation",
+        "returns"
+      ],
+      "created_at": "2025-04-22",
+      "status": "resolved"
+    },
+    {
+      "key": "api-022",
+      "family_id": "api-f04",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "'invalid_cursor' after pausing between pages",
+      "description": "Customer's job pauses for about half an hour between pages to stay polite with their own database, then gets 400 'invalid_cursor' on the next request.",
+      "resolution_notes": "Pagination cursors are valid for 10 minutes. Recommended processing pages promptly into a staging area, or recording an updated_since checkpoint and starting a fresh cursor after long pauses. Their reworked job completed with checkpoints and no cursor errors.",
+      "tags": [
+        "pagination",
+        "cursor-expiry",
+        "checkpointing"
+      ],
+      "created_at": "2025-11-11",
+      "status": "resolved"
+    },
+    {
+      "key": "api-023",
+      "family_id": "api-f04",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Script only ever gets the first 1,000 products",
+      "description": "Customer's script requests page_size=5000 from the products endpoint and always ends with exactly 1,000 products, although the catalogue has about 18,000. No error is returned.",
+      "resolution_notes": "The maximum page size is 1,000 and larger values are capped. The script treated a page with fewer rows than requested as the last page and stopped. Changed the loop to continue while a next_cursor is present, and we added a warning header when page_size is capped. The script now retrieves all 18,214 products.",
+      "tags": [
+        "pagination",
+        "page-size-cap",
+        "next-cursor"
+      ],
+      "created_at": "2026-04-28",
+      "status": "resolved"
+    },
+    {
+      "key": "api-024",
+      "family_id": "api-f04",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Occasional records skipped at page boundaries",
+      "description": "Agent summary: customer pages through stock movements sorted by created_at and occasionally loses a record exactly at a page boundary, even with cursor pagination and no concurrent writes.",
+      "resolution_notes": "Movements are imported in batches that share the same created_at second, and the cursor encoded only the timestamp, so ties at a boundary could be skipped. Added the record ID as a tiebreaker to the sort and cursor on our side. A full walk over a test period with many ties returned every record exactly once.",
+      "tags": [
+        "pagination",
+        "sort-tiebreaker",
+        "stock-movements"
+      ],
+      "created_at": "2026-09-22",
+      "status": "resolved"
+    },
+    {
+      "key": "api-025",
+      "family_id": "api-f05",
+      "related_group": "api-g04",
+      "challenge": null,
+      "classification_rationale": "The failing key belongs to an automated integration rather than a person signing in, so this is api rather than auth.",
+      "category": "api",
+      "subject": "Nightly integration fails with 401 invalid_api_key",
+      "description": "Customer's nightly job that pulls sales into their planning tool started failing with 401 'invalid_api_key' on Tuesday. Nobody changed the job.",
+      "resolution_notes": "The key had been created by an analyst who left the company on Monday; deactivating their account revoked all keys they owned, as designed. Helped the admin create a service account with only the read scopes the job needs and issue a new key from it. The job ran successfully that night.",
+      "tags": [
+        "api-key",
+        "offboarding-revocation",
+        "service-account"
+      ],
+      "created_at": "2025-02-25",
+      "status": "resolved"
+    },
+    {
+      "key": "api-026",
+      "family_id": "api-f05",
+      "related_group": "api-g04",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Inventory feed to ERP stopped, API says key revoked",
+      "description": "The customer's ERP stopped receiving daily inventory positions. Their middleware log shows our API answering 'api_key_revoked'.",
+      "resolution_notes": "The audit log showed the key was revoked automatically when the contractor who created it was deactivated at the end of their engagement. Created a dedicated integration service account with read-only inventory scope and rotated the middleware to its key. The next scheduled feed delivered successfully.",
+      "tags": [
+        "api-key",
+        "key-revoked",
+        "audit-log"
+      ],
+      "created_at": "2025-06-24",
+      "status": "resolved"
+    },
+    {
+      "key": "api-027",
+      "family_id": "api-f05",
+      "related_group": "api-g04",
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Three unrelated scripts all broke on the same morning",
+      "description": "Customer reports three different internal scripts (a stock alert script, a finance pull, and a wallboard) all started returning authentication errors on Monday morning.",
+      "resolution_notes": "All three keys were owned by the same former IT employee, whose account was deactivated on Friday afternoon, which revoked the keys. Set up two service accounts with scopes matched to each script's needs and reissued keys. All three scripts were confirmed working, and the admin now reviews key ownership during offboarding.",
+      "tags": [
+        "api-key",
+        "key-ownership",
+        "offboarding-revocation"
+      ],
+      "created_at": "2025-09-15",
+      "status": "resolved"
+    },
+    {
+      "key": "api-028",
+      "family_id": "api-f05",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "403 insufficient_scope when creating exports via API",
+      "description": "Customer's developer can list dashboards with their key but gets 403 'insufficient_scope: exports:write' when calling POST /v2/exports.",
+      "resolution_notes": "The key was issued with read-only scopes. Created a new key for the integration with exports:write added to its existing read scopes, keeping other write scopes off. Export creation then succeeded and the old key was revoked.",
+      "tags": [
+        "api-key",
+        "key-scopes",
+        "least-privilege"
+      ],
+      "created_at": "2025-12-30",
+      "status": "resolved"
+    },
+    {
+      "key": "api-029",
+      "family_id": "api-f05",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "API keys expired without anyone being warned",
+      "description": "Several of the customer's integrations returned 401 on the same day. Their admin says no one received any notice that keys were about to expire.",
+      "resolution_notes": "The workspace had enabled a 180-day key expiry policy, and expiry warnings were going to a shared mailbox nobody monitored. Rotated the affected keys, set the expiry notification recipients to the integration owners, and enabled the 14-day and 3-day reminders. The integrations recovered and the admin confirmed the test reminder reached the right people.",
+      "tags": [
+        "api-key",
+        "key-expiry",
+        "expiry-notifications"
+      ],
+      "created_at": "2026-05-26",
+      "status": "resolved"
+    },
+    {
+      "key": "api-030",
+      "family_id": "api-f05",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "New API key rejected right after creating it",
+      "description": "Customer generated a key minutes ago and every call to api.example.net returns 401. They suspect key creation is broken.",
+      "resolution_notes": "The key had been created in the customer's sandbox workspace, and sandbox keys only work against the sandbox base URL. Pointed the integration at the sandbox host for testing and created a separate production key for go-live. Both keys authenticated against their matching hosts.",
+      "tags": [
+        "api-key",
+        "sandbox-environment",
+        "base-url"
+      ],
+      "created_at": "2026-10-13",
+      "status": "resolved"
+    },
+    {
+      "key": "api-031",
+      "family_id": "api-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "400 invalid_date on metrics query",
+      "description": "Customer's request to the metrics endpoint with from=11/03/2026 returns 400 'invalid_date: expected ISO 8601'.",
+      "resolution_notes": "The API only accepts ISO 8601 dates, and 11/03/2026 is also ambiguous between March and November. Updated their client to send 2026-03-11 with an explicit time zone offset where times are used. Queries now return the expected data.",
+      "tags": [
+        "request-validation",
+        "iso-8601",
+        "date-format"
+      ],
+      "created_at": "2026-03-12",
+      "status": "resolved"
+    },
+    {
+      "key": "api-032",
+      "family_id": "api-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "415 Unsupported Media Type when creating annotations",
+      "description": "A low-code automation tool used by the customer gets 415 when posting annotations, though the same body works from their developer's command line.",
+      "resolution_notes": "The automation tool sent the body as form-encoded data without a JSON content type. Configured the tool's HTTP step to send a raw JSON body with Content-Type: application/json. Annotations were created successfully from the tool afterwards.",
+      "tags": [
+        "content-type",
+        "http-415",
+        "annotations"
+      ],
+      "created_at": "2025-08-12",
+      "status": "resolved"
+    },
+    {
+      "key": "api-033",
+      "family_id": "api-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "422 on 'granularity' parameter",
+      "description": "Customer gets 422 'granularity must be one of day, week, month' when sending granularity=Weekly in their report request.",
+      "resolution_notes": "Enum values are lower-case and use the singular period name, so 'Weekly' does not match 'week'. Corrected the client's mapping and pointed the customer to the enum list in the reference. The weekly request now succeeds.",
+      "tags": [
+        "request-validation",
+        "enum-values",
+        "http-422"
+      ],
+      "created_at": "2025-01-30",
+      "status": "resolved"
+    },
+    {
+      "key": "api-034",
+      "family_id": "api-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Annotation create fails with unknown_field 'notes'",
+      "description": "Customer's integration adds a 'notes' property when creating chart annotations and receives 400 'unknown_field: notes'.",
+      "resolution_notes": "The annotation endpoint validates strictly and does not accept extra top-level properties. Advised placing free text in the 'description' field and custom values in the metadata object. Their integration now creates annotations with the notes preserved in description.",
+      "tags": [
+        "strict-validation",
+        "unknown-field",
+        "annotations"
+      ],
+      "created_at": "2025-10-21",
+      "status": "resolved"
+    },
+    {
+      "key": "api-035",
+      "family_id": "api-f06",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "The customer pushes data through the public events endpoint and the request is rejected by its documented limits, so this is api rather than a sync connector failure.",
+      "category": "api",
+      "subject": "Event push requests rejected with 413 at month end",
+      "description": "Customer pushes in-store events to our ingest endpoint in batches. At month end some batches fail with 413 'batch exceeds 1000 events or 5 MB'.",
+      "resolution_notes": "Their batching was time-based, so busy periods produced batches of several thousand events. Changed their client to cut batches at 1,000 events or 4 MB, whichever comes first. The following month end had no rejected batches and event counts matched their source.",
+      "tags": [
+        "ingest-endpoint",
+        "batch-size-limit",
+        "http-413"
+      ],
+      "created_at": "2026-02-02",
+      "status": "resolved"
+    },
+    {
+      "key": "api-036",
+      "family_id": "api-f06",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The returned numbers looked wrong, but the stored data was correct; the request was malformed, so this is api rather than data_quality.",
+      "category": "api",
+      "subject": "API returns wrong figures for one store",
+      "description": "Customer says API results for their 'Harbor & Pine' store don't match the dashboard at all, while every other store matches.",
+      "resolution_notes": "The client built the query string without URL-encoding, so the ampersand split the filter and the API received store='Harbor ' plus a stray parameter, returning a partial match. Updated the client to encode query parameters. Results for that store now match the dashboard.",
+      "tags": [
+        "url-encoding",
+        "query-parameters",
+        "store-filter"
+      ],
+      "created_at": "2026-08-04",
+      "status": "resolved"
+    },
+    {
+      "key": "api-037",
+      "family_id": "api-f07",
+      "related_group": "api-g05",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Reports endpoint now returns 410 Gone",
+      "description": "Customer's integration that lists reports through /v1/reports suddenly returns 410 Gone for every request.",
+      "resolution_notes": "The v1 reports endpoints reached their announced sunset date. Walked the customer through the equivalent v2 endpoint, which uses cursor pagination and nests owner information. Their updated integration returned the full report list from v2.",
+      "tags": [
+        "api-versioning",
+        "sunset",
+        "http-410"
+      ],
+      "created_at": "2025-07-02",
+      "status": "resolved"
+    },
+    {
+      "key": "api-038",
+      "family_id": "api-f07",
+      "related_group": "api-g05",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Finance script error: 'This API version is no longer available'",
+      "description": "The customer's finance team says the script they use to pull the month-end report pack broke overnight with the message 'This API version is no longer available'.",
+      "resolution_notes": "The script called the v1 report download endpoint, which was retired on its published sunset date. Provided the v2 request mapping, including the new report_id parameter name, and the customer's developer updated the script. The month-end pack downloaded successfully the next morning.",
+      "tags": [
+        "api-versioning",
+        "v1-retirement",
+        "month-end"
+      ],
+      "created_at": "2025-07-03",
+      "status": "resolved"
+    },
+    {
+      "key": "api-039",
+      "family_id": "api-f07",
+      "related_group": "api-g05",
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Report list sync failing since 1 July and we got no warning",
+      "description": "Customer reports their scheduled pull of report metadata fails every run since 1 July. They say they were never told anything would change.",
+      "resolution_notes": "The job still used v1 report endpoints, which were sunset on 1 July; deprecation notices had gone to a technical contact who had left the company. Helped them migrate the job to v2 and update the workspace's technical contact. The job has run cleanly since, and future notices reach the current team.",
+      "tags": [
+        "api-versioning",
+        "deprecation-notice",
+        "technical-contact"
+      ],
+      "created_at": "2025-07-08",
+      "status": "resolved"
+    },
+    {
+      "key": "api-040",
+      "family_id": "api-f07",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "store_code is null after upgrading to v2",
+      "description": "After switching their client from v1 to v2, the customer's mapping shows store_code as empty on every record.",
+      "resolution_notes": "In v2 the field was renamed to location_code because it now covers stores, distribution sites and online channels. Updated the customer's field mapping per the migration guide. Records now carry the expected codes.",
+      "tags": [
+        "api-versioning",
+        "field-rename",
+        "migration-guide"
+      ],
+      "created_at": "2025-11-18",
+      "status": "resolved"
+    },
+    {
+      "key": "api-041",
+      "family_id": "api-f07",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Response format changed after we created a new key",
+      "description": "Customer's client started receiving a different response shape for dashboards after they rotated their API key. Their code hasn't changed.",
+      "resolution_notes": "Their client did not send a version header, so requests were pinned to the API version current when each key was created; the new key defaulted to a newer version. Advised sending an explicit version header on every request. With the header set, both old and new keys returned the expected format.",
+      "tags": [
+        "api-versioning",
+        "version-header",
+        "default-version"
+      ],
+      "created_at": "2026-04-07",
+      "status": "resolved"
+    },
+    {
+      "key": "api-042",
+      "family_id": "api-f07",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Deprecation header appearing on dashboard list calls",
+      "description": "Customer's API monitoring started flagging a 'Deprecation' response header on their dashboard listing calls and they want to know what will break and when.",
+      "resolution_notes": "They were using the include=widgets expansion on the dashboard list, which is scheduled for removal in favour of the separate widgets endpoint. Shared the removal date and helped them switch to fetching widgets per dashboard. A week of their logs showed no remaining deprecation headers.",
+      "tags": [
+        "deprecation-header",
+        "api-versioning",
+        "widgets-endpoint"
+      ],
+      "created_at": "2026-09-08",
+      "status": "resolved"
+    },
+    {
+      "key": "api-043",
+      "family_id": "api-f08",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "500 error listing dashboards with emoji in titles",
+      "description": "GET /v2/dashboards returns 500 for one customer but works for others. The customer recently renamed several dashboards with emoji in their titles.",
+      "resolution_notes": "A legacy summary field truncated titles by byte count, splitting multi-byte emoji and producing an invalid string that failed serialization. Fixed the truncation to respect character boundaries. The customer's dashboard list now returns 200 with titles intact.",
+      "tags": [
+        "http-500",
+        "unicode-truncation",
+        "dashboards-endpoint"
+      ],
+      "created_at": "2025-05-06",
+      "status": "resolved"
+    },
+    {
+      "key": "api-044",
+      "family_id": "api-f08",
+      "related_group": null,
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "502 Bad Gateway when filtering by many stores",
+      "description": "Customer's request to the metrics endpoint filtered to about 900 store IDs in the query string returns 502 Bad Gateway. Smaller lists work.",
+      "resolution_notes": "The URL exceeded the 8 KB limit at our edge, which returned a misleading 502 instead of a clear error. As a workaround the customer moved to the POST /v2/metrics/query endpoint with the store list in the body, which works for any size. A permanent change to return 414 with guidance for oversized URLs is scheduled.",
+      "tags": [
+        "http-502",
+        "url-length",
+        "post-query"
+      ],
+      "created_at": "2025-09-02",
+      "status": "resolved"
+    },
+    {
+      "key": "api-045",
+      "family_id": "api-f08",
+      "related_group": null,
+      "challenge": "workaround_vs_permanent_fix",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Store metrics endpoint fails for newly opened stores",
+      "description": "Customer's integration gets 500 from /v2/stores/{id}/metrics for three stores that opened this week. Established stores return fine.",
+      "resolution_notes": "Average basket value divided revenue by transaction count, and stores with zero transactions caused an unhandled division by zero. As a temporary workaround the customer requested only the totals fields for stores without trading history, which avoids the average calculation; the permanent fix returning null averages for zero-transaction stores was deployed nine days later. All three stores now return 200 with the full field set.",
+      "tags": [
+        "http-500",
+        "division-by-zero",
+        "new-stores"
+      ],
+      "created_at": "2026-01-20",
+      "status": "resolved"
+    },
+    {
+      "key": "api-046",
+      "family_id": "api-f08",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Brief 503 errors every Tuesday afternoon",
+      "description": "The customer's monitoring shows a burst of 503 responses lasting about 30 seconds most Tuesdays around 14:00 UTC.",
+      "resolution_notes": "Tuesday is our regular release window, and API instances were stopped without draining in-flight connections. Enabled graceful shutdown with connection draining and readiness checks during deploys. The customer's monitoring showed no 503s during the next two releases.",
+      "tags": [
+        "http-503",
+        "deploy-window",
+        "connection-draining"
+      ],
+      "created_at": "2026-06-02",
+      "status": "resolved"
+    },
+    {
+      "key": "api-047",
+      "family_id": "api-f08",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "fields=* request returns 500 for one workspace",
+      "description": "Agent summary: requesting all metric fields with fields=* fails with 500 for one customer workspace only. Listing specific fields works.",
+      "resolution_notes": "The workspace's metric catalogue still listed a calculated metric whose definition referenced a deleted field, and expanding the wildcard tried to evaluate it. Changed wildcard expansion to skip invalid metrics and report them in a warnings array, and helped the customer repair the metric. fields=* now returns 200.",
+      "tags": [
+        "http-500",
+        "field-wildcard",
+        "broken-metric"
+      ],
+      "created_at": "2026-07-21",
+      "status": "resolved"
+    },
+    {
+      "key": "api-048",
+      "family_id": "api-f08",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "PATCH dashboard crashes with 500 instead of a validation error",
+      "description": "Customer's automation sends a PATCH to update dashboard widgets and sometimes gets 500. They found the failing requests contain an empty item in the widgets array.",
+      "resolution_notes": "A null entry in the widgets array reached code that assumed every entry was an object, causing an unhandled exception. Added validation so null or malformed entries return 400 with the offending index. The customer fixed their automation and receives clear validation errors for bad input.",
+      "tags": [
+        "http-500",
+        "input-validation",
+        "dashboard-patch"
+      ],
+      "created_at": "2025-03-25",
+      "status": "resolved"
+    },
+    {
+      "key": "api-049",
+      "family_id": "api-f09",
+      "related_group": "api-g08",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Deploy pipeline creating duplicate chart annotations",
+      "description": "Customer's release pipeline posts an annotation for each deployment. Some charts now show two or three identical 'Release' markers for the same deploy.",
+      "resolution_notes": "The pipeline's HTTP step had a 5-second timeout and retried the POST without an Idempotency-Key, so slow but successful requests were repeated. Added an Idempotency-Key derived from the deployment ID and raised the client timeout. The next ten deployments each created exactly one annotation; we also removed the duplicates.",
+      "tags": [
+        "idempotency-key",
+        "client-retries",
+        "annotations"
+      ],
+      "created_at": "2025-02-04",
+      "status": "resolved"
+    },
+    {
+      "key": "api-050",
+      "family_id": "api-f09",
+      "related_group": "api-g08",
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The duplicates were created through the public API by the customer's retries, so this is api rather than an export or sync problem.",
+      "category": "api",
+      "subject": "Scheduled report created three times via API",
+      "description": "Customer's onboarding script set up a weekly report for a new region, and now three identical copies of the schedule exist, so managers receive the report three times.",
+      "resolution_notes": "The script's retry wrapper repeated the create-schedule POST after client-side timeouts, and without an Idempotency-Key each retry created a new schedule. Removed the two extra schedules and updated the wrapper to send a stable Idempotency-Key per logical request. A re-run of the script against a test region created one schedule.",
+      "tags": [
+        "idempotency-key",
+        "duplicate-objects",
+        "retry-wrapper"
+      ],
+      "created_at": "2025-08-26",
+      "status": "resolved"
+    },
+    {
+      "key": "api-051",
+      "family_id": "api-f09",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "422 'idempotency_key_reused' on target uploads",
+      "description": "Customer's daily upload of store sales targets fails with 422 'idempotency_key_reused' on most days except the first of the month.",
+      "resolution_notes": "The client used the target month as its Idempotency-Key, so each day's upload reused the key with a different body, which the API rejects to prevent ambiguity. Changed the key to a UUID generated per upload attempt and reused only for retries of that same attempt. Daily uploads have succeeded since.",
+      "tags": [
+        "idempotency-key",
+        "key-reuse",
+        "sales-targets"
+      ],
+      "created_at": "2025-10-28",
+      "status": "resolved"
+    },
+    {
+      "key": "api-052",
+      "family_id": "api-f09",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Idempotency key didn't prevent a duplicate after a day",
+      "description": "Customer expected their re-run of a failed job to be harmless because it reused the same idempotency keys, but it created duplicate segments. They thought the key prevented duplicates permanently.",
+      "resolution_notes": "Idempotency keys are retained for 24 hours, and the re-run happened about 30 hours later, so the keys were treated as new. Recommended using the create-or-update endpoint keyed on their own external_ref for long-lived deduplication. Removed the duplicate segments and confirmed a re-run with external_ref updated rather than created.",
+      "tags": [
+        "idempotency-window",
+        "external-ref",
+        "segments"
+      ],
+      "created_at": "2026-02-10",
+      "status": "resolved"
+    },
+    {
+      "key": "api-053",
+      "family_id": "api-f09",
+      "related_group": "api-g08",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Duplicate store targets after network blip",
+      "description": "During a brief network outage at the customer's office, their planning tool uploaded store targets and now several stores show doubled targets on the attainment dashboard.",
+      "resolution_notes": "The planning tool retried each create-target request that had timed out on its side, without an Idempotency-Key, so targets that had already been created were created again. Deleted the duplicates via the API and enabled the tool's idempotency setting, which sends a stable key per target. A simulated timeout test produced no further duplicates.",
+      "tags": [
+        "idempotency-key",
+        "network-timeout",
+        "sales-targets"
+      ],
+      "created_at": "2026-05-05",
+      "status": "resolved"
+    },
+    {
+      "key": "api-054",
+      "family_id": "api-f09",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Two integrations overwriting each other's dashboard changes",
+      "description": "Customer has two automation jobs updating the same dashboard's settings. Changes from one job randomly disappear after the other job runs.",
+      "resolution_notes": "Both jobs read the dashboard, modified it and wrote it back with PUT, so the later write replaced the earlier one. Updated both jobs to send the ETag in an If-Match header and to re-read and retry on 412 Precondition Failed. Running both jobs concurrently now preserves both sets of changes.",
+      "tags": [
+        "lost-update",
+        "etag",
+        "if-match"
+      ],
+      "created_at": "2026-08-11",
+      "status": "resolved"
+    },
+    {
+      "key": "api-055",
+      "family_id": "api-f10",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "order.updated arrives before order.created",
+      "description": "Customer's consumer logs 'order not found' errors because it sometimes receives an order.updated event before the order.created event for the same order.",
+      "resolution_notes": "Webhook delivery is parallel and does not guarantee ordering between events, as documented. Advised making the consumer upsert by order ID and use the event's sequence number to ignore older states. After the change the consumer stopped logging lookup errors.",
+      "tags": [
+        "event-ordering",
+        "upsert",
+        "sequence-number"
+      ],
+      "created_at": "2025-01-14",
+      "status": "resolved"
+    },
+    {
+      "key": "api-056",
+      "family_id": "api-f10",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Duplicate order events double-counted in partner system",
+      "description": "Customer's partner portal showed some orders twice on one afternoon. Their logs show the same event ID received two times about a minute apart.",
+      "resolution_notes": "A delivery worker failover re-sent a batch of events whose acknowledgements had not yet been recorded, which at-least-once delivery permits. Recommended deduplicating on the event ID with a short retention store. The customer added the check and corrected the double-counted orders.",
+      "tags": [
+        "at-least-once",
+        "event-deduplication",
+        "failover"
+      ],
+      "created_at": "2025-06-10",
+      "status": "resolved"
+    },
+    {
+      "key": "api-057",
+      "family_id": "api-f10",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Our status page shows datasets stuck on 'refreshing'",
+      "description": "Customer mirrors dataset refresh status from webhook events. Some datasets stay 'refreshing' in their tool even though our app shows the refresh finished hours ago.",
+      "resolution_notes": "Short refreshes produced started and completed events within milliseconds, and the completed event sometimes arrived first; the consumer then overwrote it with 'refreshing'. Advised comparing the event's occurred_at and sequence number before applying a status. Their mirror has matched our status since.",
+      "tags": [
+        "event-ordering",
+        "status-mirroring",
+        "dataset-refresh"
+      ],
+      "created_at": "2025-08-05",
+      "status": "resolved"
+    },
+    {
+      "key": "api-058",
+      "family_id": "api-f10",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Deleted dashboards reappear in our catalogue",
+      "description": "Agent summary: customer keeps a catalogue of dashboards fed by webhooks. Dashboards deleted in our app occasionally come back in their catalogue a few seconds later.",
+      "resolution_notes": "An update event emitted just before deletion was delivered after the dashboard.deleted event, and the consumer recreated the entry. Advised keeping a tombstone for deleted IDs and ignoring older updates for them. No deleted dashboards reappeared during the following week.",
+      "tags": [
+        "event-ordering",
+        "tombstone",
+        "delete-events"
+      ],
+      "created_at": "2025-12-23",
+      "status": "resolved"
+    },
+    {
+      "key": "api-059",
+      "family_id": "api-f10",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Only processing one change per webhook since enabling batching",
+      "description": "Since the customer turned on webhook batching to reduce request volume, their consumer seems to lose most inventory changes during busy periods.",
+      "resolution_notes": "With batching on, each delivery carries an events array, but the consumer only read the first element. Updated the consumer to iterate the full array and acknowledge the batch only after all items are stored. Change counts in their system now match the delivery log.",
+      "tags": [
+        "webhook-batching",
+        "events-array",
+        "inventory-changes"
+      ],
+      "created_at": "2026-03-31",
+      "status": "resolved"
+    },
+    {
+      "key": "api-060",
+      "family_id": "api-f10",
+      "related_group": null,
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Not every status change produces a webhook",
+      "description": "Customer expected one event per status change on fulfilment records, but when a record goes through several statuses within a few seconds they only receive the final one.",
+      "resolution_notes": "Event coalescing was enabled on their subscription, which merges rapid successive updates to the same object within 5 seconds into one event carrying the latest state. Since they need every transition, we disabled coalescing for their subscription. Each status change now arrives as its own event.",
+      "tags": [
+        "event-coalescing",
+        "status-transitions",
+        "fulfilment"
+      ],
+      "created_at": "2026-09-29",
+      "status": "resolved"
+    },
+    {
+      "key": "api-061",
+      "family_id": "api-f11",
+      "related_group": "api-g06",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Webhooks stopped completely last week",
+      "description": "Customer says they have not received a single webhook since last Wednesday. Their endpoint had problems during a server migration but has been healthy since Friday.",
+      "resolution_notes": "During the migration the endpoint failed every delivery for over 72 hours, so the subscription was automatically disabled and stayed disabled after the endpoint recovered. Re-enabled the subscription and replayed the missed events from the event log. The customer confirmed receipt of the backlog and new events.",
+      "tags": [
+        "webhook-subscription",
+        "auto-disabled",
+        "event-replay"
+      ],
+      "created_at": "2025-03-05",
+      "status": "resolved"
+    },
+    {
+      "key": "api-062",
+      "family_id": "api-f11",
+      "related_group": "api-g06",
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Delivery log empty since 12 March",
+      "description": "The customer's developer checked the webhook delivery log and found no attempts at all after 12 March, not even failures.",
+      "resolution_notes": "The subscription had been auto-disabled on 12 March after three days of consecutive failures caused by an expired route on their side; once disabled, no attempts are logged. The disable notification had gone to a former employee. Re-enabled the subscription, replayed events, and set a team address for subscription alerts.",
+      "tags": [
+        "webhook-subscription",
+        "auto-disabled",
+        "notification-recipient"
+      ],
+      "created_at": "2025-03-20",
+      "status": "resolved"
+    },
+    {
+      "key": "api-063",
+      "family_id": "api-f11",
+      "related_group": "api-g06",
+      "challenge": "negation_or_opposite",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Test webhook arrives, real events never do",
+      "description": "Customer clicks 'Send test event' and their endpoint receives it immediately, but no real events have arrived for two weeks.",
+      "resolution_notes": "The subscription was in the auto-disabled state after an earlier run of failures, and test events are sent regardless of subscription state. Re-enabled the subscription, and we updated the settings page to show the disabled status next to the test button. Real events resumed within a minute.",
+      "tags": [
+        "webhook-subscription",
+        "auto-disabled",
+        "test-event"
+      ],
+      "created_at": "2025-04-16",
+      "status": "resolved"
+    },
+    {
+      "key": "api-064",
+      "family_id": "api-f11",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "These are product events delivered to the customer's integration; the delivery of the report email itself was not affected, so this is api rather than export.",
+      "category": "api",
+      "subject": "No webhook when scheduled reports are delivered",
+      "description": "Customer wants their workflow tool to react when a scheduled report is sent, but no events arrive. Their subscription does receive export events.",
+      "resolution_notes": "The subscription included export.completed but not report.delivered, which is a separate event type. Added report.delivered to the subscription. The next scheduled delivery triggered the event and the workflow ran.",
+      "tags": [
+        "webhook-subscription",
+        "event-types",
+        "report-delivered"
+      ],
+      "created_at": "2025-11-05",
+      "status": "resolved"
+    },
+    {
+      "key": "api-065",
+      "family_id": "api-f11",
+      "related_group": null,
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Every webhook event arriving twice",
+      "description": "Customer's consumer receives each event twice, consistently, with different delivery IDs but identical event IDs.",
+      "resolution_notes": "Two subscriptions pointed at the same URL: an old one created during a pilot and a newer one from the production setup. Removed the pilot subscription after confirming it covered no extra event types. Each event now arrives once.",
+      "tags": [
+        "webhook-subscription",
+        "duplicate-subscription",
+        "event-id"
+      ],
+      "created_at": "2026-04-22",
+      "status": "resolved"
+    },
+    {
+      "key": "api-066",
+      "family_id": "api-f11",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "No events for the stores we opened this year",
+      "description": "Customer's integration receives sales events for older stores but nothing for the eight stores opened since January.",
+      "resolution_notes": "When the subscription was created, a filter listing specific store IDs had been added, so new stores were excluded. Replaced the store list with a region filter that covers current and future stores in those regions. Events for the new stores started arriving immediately.",
+      "tags": [
+        "webhook-subscription",
+        "subscription-filter",
+        "new-stores"
+      ],
+      "created_at": "2026-07-01",
+      "status": "resolved"
+    },
+    {
+      "key": "api-067",
+      "family_id": "api-f12",
+      "related_group": "api-g07",
+      "challenge": null,
+      "classification_rationale": "The IDs are correct in our system and in the raw response; they are corrupted by the client's number parsing, so this is api rather than data_quality.",
+      "category": "api",
+      "subject": "Order IDs off by a few digits in our web app",
+      "description": "Customer's front-end developer reports that order IDs displayed in their internal web app differ from ours in the last two or three digits, for newer orders only.",
+      "resolution_notes": "Order IDs are 64-bit integers returned as JSON numbers, and the app's JavaScript parser rounded values above 2^53. Advised using the id_str field that every object also returns, or a big-integer-aware parser. After switching to id_str the displayed IDs matched exactly.",
+      "tags": [
+        "integer-precision",
+        "id-str",
+        "javascript-client"
+      ],
+      "created_at": "2025-05-15",
+      "status": "resolved"
+    },
+    {
+      "key": "api-068",
+      "family_id": "api-f12",
+      "related_group": "api-g07",
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "404 when fetching orders using IDs from the list endpoint",
+      "description": "The customer's script lists orders, then fetches each one by ID. For recent orders the detail call returns 404 'order not found', although the order exists in the app.",
+      "resolution_notes": "The script, written in JavaScript, parsed the list response with standard number handling, rounding large 64-bit IDs, so it requested IDs that do not exist. Switched the script to the string ID field. All detail lookups now succeed.",
+      "tags": [
+        "integer-precision",
+        "http-404",
+        "order-lookup"
+      ],
+      "created_at": "2025-06-17",
+      "status": "resolved"
+    },
+    {
+      "key": "api-069",
+      "family_id": "api-f12",
+      "related_group": null,
+      "challenge": "similar_wording_different_problem",
+      "classification_rationale": "The timestamps returned were correct UTC values; the customer's parser dropped the offset, so this is api rather than a data_quality time-zone bucketing problem.",
+      "category": "api",
+      "subject": "Order times from API are hours off",
+      "description": "Customer in a UTC-5 region says order timestamps pulled from the API are five hours later than the times shown in the dashboard.",
+      "resolution_notes": "The API returns timestamps in UTC with a trailing 'Z', while the dashboard displays workspace local time. The customer's parser discarded the 'Z' and treated values as local. Updated their parsing to honour the offset and convert to local time. The converted values now match the dashboard.",
+      "tags": [
+        "utc-timestamps",
+        "timezone-offset",
+        "client-parsing"
+      ],
+      "created_at": "2025-09-23",
+      "status": "resolved"
+    },
+    {
+      "key": "api-070",
+      "family_id": "api-f12",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "Amounts are correct but returned as strings by design; the inflated totals came from the customer's script concatenating them, so this is api rather than data_quality.",
+      "category": "api",
+      "subject": "Revenue totals from API script are absurdly large",
+      "description": "A customer's spreadsheet macro sums daily revenue pulled from the API and produced a total with dozens of digits.",
+      "resolution_notes": "Monetary amounts are returned as decimal strings to avoid floating-point rounding, and the macro concatenated the strings instead of adding numbers. Updated the macro to convert amounts to decimal before summing. The weekly total now matches the dashboard to the cent.",
+      "tags": [
+        "decimal-strings",
+        "monetary-amounts",
+        "client-parsing"
+      ],
+      "created_at": "2026-01-06",
+      "status": "resolved"
+    },
+    {
+      "key": "api-071",
+      "family_id": "api-f12",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Strict client fails to deserialize store response",
+      "description": "Customer's typed client throws 'missing required property closing_date' on some store records. Other stores deserialize fine.",
+      "resolution_notes": "The API omits properties whose value is null by default, so open stores have no closing_date property. Recommended the include_nulls=true parameter for strict clients and marking optional fields as optional in their model. Every store record now deserializes.",
+      "tags": [
+        "null-fields",
+        "include-nulls",
+        "typed-client"
+      ],
+      "created_at": "2026-03-03",
+      "status": "resolved"
+    },
+    {
+      "key": "api-072",
+      "family_id": "api-f12",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Conversion rate from API is 100 times smaller than the dashboard",
+      "description": "Customer's analyst says the API returns conversion_rate as 0.034 while the dashboard shows 3.4%, and asked which one is correct.",
+      "resolution_notes": "Both are correct: the API returns ratios as fractions, and the dashboard applies percentage formatting. Pointed them to the field metadata that marks ratio fields, and their report now multiplies by 100 for display. Figures now agree with the dashboard.",
+      "tags": [
+        "ratio-fields",
+        "percentage-format",
+        "field-metadata"
+      ],
+      "created_at": "2026-10-06",
+      "status": "resolved"
+    },
+    {
+      "key": "api-073",
+      "family_id": "api-f13",
+      "related_group": "api-g09",
+      "challenge": "related_symptom_different_product",
+      "classification_rationale": "The export was produced correctly; the failure is in how the client used the job's download URL, so it is api rather than export.",
+      "category": "api",
+      "subject": "AccessDenied when downloading bulk export result",
+      "description": "Customer's integration starts a bulk export, waits for it to complete, and then gets 403 'AccessDenied: request has expired' when downloading the file about an hour later.",
+      "resolution_notes": "Result URLs are pre-signed and valid for 15 minutes from the status call that returns them. The integration stored the URL and downloaded it later. Changed it to call the job status endpoint immediately before downloading to get a fresh URL. Downloads now succeed regardless of delay.",
+      "tags": [
+        "bulk-export-job",
+        "presigned-url",
+        "url-expiry"
+      ],
+      "created_at": "2025-08-28",
+      "status": "resolved"
+    },
+    {
+      "key": "api-074",
+      "family_id": "api-f13",
+      "related_group": "api-g09",
+      "challenge": "same_symptom_different_cause",
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Bulk job download works in testing, fails in nightly run",
+      "description": "Customer's developer says downloading bulk job results works whenever they test by hand, but the nightly pipeline fails at the download step with an expired-request error.",
+      "resolution_notes": "The nightly pipeline fetched the job status, then waited about 30 minutes for another stage before downloading, by which time the 15-minute pre-signed URL had expired; manual tests downloaded immediately. Moved the status call to just before download. The pipeline has completed every night since.",
+      "tags": [
+        "bulk-export-job",
+        "presigned-url",
+        "pipeline-timing"
+      ],
+      "created_at": "2025-10-15",
+      "status": "resolved"
+    },
+    {
+      "key": "api-075",
+      "family_id": "api-f13",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Bulk import job shows 'running' for two days",
+      "description": "Customer submitted a product attribute bulk import via the API on Monday and the job status still says 'running' on Wednesday.",
+      "resolution_notes": "The file failed header validation in the first second, but a defect left the job status as 'running' instead of setting 'failed' with an error report. Fixed the status transition and backfilled the correct state for affected jobs. The customer's job now shows 'failed' with the missing-column error, and their corrected file imported successfully.",
+      "tags": [
+        "bulk-import-job",
+        "job-status",
+        "validation-error"
+      ],
+      "created_at": "2026-02-17",
+      "status": "resolved"
+    },
+    {
+      "key": "api-076",
+      "family_id": "api-f13",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": "Rows were submitted through the bulk API and rejected by validation, so this is api rather than a connector sync problem.",
+      "category": "api",
+      "subject": "Bulk import says completed but about 500 rows are missing",
+      "description": "Customer's bulk upload of 10,000 store attributes reports success, but 500 stores still show old values in the app.",
+      "resolution_notes": "The job finished with status 'completed_with_errors', and the error file listed 500 rows rejected for store codes that do not exist in the workspace. Their client only checked that the job was no longer running. Updated the client to treat 'completed_with_errors' as needing attention and to read the error file; the corrected rows imported cleanly on resubmission.",
+      "tags": [
+        "bulk-import-job",
+        "partial-success",
+        "error-file"
+      ],
+      "created_at": "2026-06-23",
+      "status": "resolved"
+    },
+    {
+      "key": "api-077",
+      "family_id": "api-f13",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Async query job results only contain part of the data",
+      "description": "Customer runs a large async query through the API and the downloaded result has about a fifth of the expected rows.",
+      "resolution_notes": "Large async query results are split into several files listed in a manifest, and the client downloaded only the first file. Updated the client to iterate over all files in the manifest. The combined result now has the full row count reported in the job summary.",
+      "tags": [
+        "async-query",
+        "result-manifest",
+        "multi-part-results"
+      ],
+      "created_at": "2026-08-25",
+      "status": "resolved"
+    },
+    {
+      "key": "api-078",
+      "family_id": "api-f13",
+      "related_group": null,
+      "challenge": null,
+      "classification_rationale": null,
+      "category": "api",
+      "subject": "Bulk job never calls our callback URL",
+      "description": "Customer passes callback_url when starting bulk jobs and says their endpoint is never called when jobs finish, so they poll instead.",
+      "resolution_notes": "The callback_url parameter was removed in v2 and is ignored; job completion is now signalled through the bulk_job.completed webhook event. Subscribed their endpoint to that event and removed the parameter from their requests. The next bulk job triggered the event within seconds of finishing.",
+      "tags": [
+        "bulk-job",
+        "callback-url",
+        "bulk-job-completed"
+      ],
+      "created_at": "2026-11-03",
+      "status": "resolved"
+    }
+  ]
+}

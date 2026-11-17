@@ -1,0 +1,1541 @@
+{
+ "category": "render",
+ "issue_families": [
+  {
+   "family_id": "render-f01",
+   "name": "Empty or blank charts",
+   "summary": "Charts draw nothing, not even axes, for all-null series, broken field references, negative values in stacked charts or formatter failures, instead of showing a clear empty state.",
+   "boundary_note": "The data is present or legitimately empty; the failure is in drawing it. Missing ingestion would be sync and wrong values would be data_quality."
+  },
+  {
+   "family_id": "render-f02",
+   "name": "Stale visuals and caching",
+   "summary": "Users see out-of-date charts, layouts, previews or app versions because of service worker bundles, query result caches, thumbnail generation or browser caching of dashboard definitions.",
+   "boundary_note": "The underlying data was ingested and is correct; only what is displayed is stale, so render rather than sync."
+  },
+  {
+   "family_id": "render-f03",
+   "name": "Filters not applying to widgets",
+   "summary": "Dashboard, cross-filter, store and shared-link filters do not reach widgets because of pinned ranges, field mappings, name matching or filter state that is not carried along.",
+   "boundary_note": "Users have access and queries are fast; the view simply does not reflect the filter, so render rather than perm or perf."
+  },
+  {
+   "family_id": "render-f04",
+   "name": "Layout, overlap and responsive grid",
+   "summary": "Widgets overlap, overflow, refuse to resize or waste space at different display scaling, screen widths and devices.",
+   "boundary_note": "On-screen arrangement only; workspace defaults and branding are workspace_admin."
+  },
+  {
+   "family_id": "render-f05",
+   "name": "On-screen number and label formatting",
+   "summary": "Axis abbreviations, tooltip formats, negative-number style, truncated labels and decimal precision displayed wrongly while the values themselves are right.",
+   "boundary_note": "Values are correct and settings are saved; the display layer formats them wrongly, so render rather than data_quality or workspace_admin."
+  },
+  {
+   "family_id": "render-f06",
+   "name": "Series colours and legends",
+   "summary": "Colours assigned by position instead of category value, brand palettes not applied to charts, and legends swamping charts with many series.",
+   "boundary_note": "A visual-encoding problem; saving the brand colours themselves is workspace_admin."
+  },
+  {
+   "family_id": "render-f07",
+   "name": "Browser- and device-specific rendering",
+   "summary": "Canvas size limits in Safari and on iPads, content-blocking extensions and pixel-ratio changes across monitors make charts blank or blurry on particular setups.",
+   "boundary_note": "No proxy or firewall is involved (connectivity) and nothing is slow (perf); drawing fails on specific clients."
+  },
+  {
+   "family_id": "render-f08",
+   "name": "Embedded dashboard display",
+   "summary": "Embedded dashboards cut off, scaled down, themed or filtered wrongly inside customer portals, or flickering in resize loops.",
+   "boundary_note": "The embed is signed in; the issues are sizing, theme and display parameters. Login loops inside embeds are auth."
+  },
+  {
+   "family_id": "render-f09",
+   "name": "Time-axis display",
+   "summary": "Axis labels shifted by the viewer's time zone, ambiguous repeated daylight-saving hours, skipped month ticks and missing dates drawn as zero.",
+   "boundary_note": "The data is bucketed correctly; only the labels or the drawing are wrong, so render rather than data_quality."
+  },
+  {
+   "family_id": "render-f10",
+   "name": "Map and geo visuals",
+   "summary": "Store maps and region maps missing pins or regions, missing background tiles, overlapping pins and auto-zoom to empty coordinates.",
+   "boundary_note": "Map lookup and drawing problems, not wrong sales values (data_quality) or blocked networks (connectivity)."
+  },
+  {
+   "family_id": "render-f11",
+   "name": "Table and pivot widgets",
+   "summary": "Column and row misalignment in virtualized tables under browser zoom, wrong totals-row labels, missing conditional formatting and sticky headers lost in full screen.",
+   "boundary_note": "On-screen table display; downloading table contents is export."
+  },
+  {
+   "family_id": "render-f12",
+   "name": "Widget loading failures and error states",
+   "summary": "Widgets stuck loading or whole pages failing because of removed code chunks after releases, uncontained widget errors, unusual characters or blocked web workers.",
+   "boundary_note": "The failure is in the front end rather than a slow query (perf) or missing data (sync)."
+  },
+  {
+   "family_id": "render-f13",
+   "name": "TV and kiosk display mode",
+   "summary": "Shop-floor screens that freeze, skip dashboards in rotation, scale badly on 4K or wide screens, or go dark.",
+   "boundary_note": "Display-mode behaviour; a session expiring on an unattended screen is auth."
+  },
+  {
+   "family_id": "render-f14",
+   "name": "Dark mode, theme and contrast",
+   "summary": "Hard-coded colours make labels, cells, chips or series invisible in dark theme, on brand palettes or in high-contrast mode.",
+   "boundary_note": "Visual contrast on screen; configuring the theme or branding itself is workspace_admin."
+  },
+  {
+   "family_id": "render-f15",
+   "name": "Tooltips, drill-down and chart interactions",
+   "summary": "Tooltips showing the wrong item or drifting from the pointer, drill-downs opening the wrong category, missing touch interaction and zoom lost on refresh.",
+   "boundary_note": "Interaction with drawn charts; the data and permissions behind them are correct."
+  }
+ ],
+ "related_groups": [
+  {
+   "group_id": "render-g01",
+   "family_id": "render-f01",
+   "shared_root_cause": "The chart component treated a series whose values were all null as invalid and drew nothing instead of an empty state."
+  },
+  {
+   "group_id": "render-g02",
+   "family_id": "render-f02",
+   "shared_root_cause": "The service worker kept serving the application bundle cached before a release until every tab of the app was closed."
+  },
+  {
+   "group_id": "render-g03",
+   "family_id": "render-f03",
+   "shared_root_cause": "Widgets had a date range pinned in their own settings, overriding the dashboard date filter, and the override indicator was easy to miss or hidden."
+  },
+  {
+   "group_id": "render-g04",
+   "family_id": "render-f06",
+   "shared_root_cause": "Series colours were assigned by position in the result rather than by category value, so colours shifted when categories were missing or reordered."
+  },
+  {
+   "group_id": "render-g05",
+   "family_id": "render-f07",
+   "shared_root_cause": "Large charts on high-resolution Apple displays exceeded Safari's canvas size or memory limit and silently failed to draw."
+  },
+  {
+   "group_id": "render-g06",
+   "family_id": "render-f09",
+   "shared_root_cause": "Time-axis labels were formatted in the viewer's browser time zone while the data was bucketed in the workspace time zone."
+  },
+  {
+   "group_id": "render-g07",
+   "family_id": "render-f12",
+   "shared_root_cause": "Tabs opened before a release requested code chunks that the release had removed, so the affected widgets failed to load."
+  },
+  {
+   "group_id": "render-g08",
+   "family_id": "render-f11",
+   "shared_root_cause": "The virtualized table computed row geometry assuming 100% browser zoom, so rows and headers drifted apart at other zoom levels."
+  }
+ ],
+ "tickets": [
+  {
+   "key": "render-001",
+   "family_id": "render-f01",
+   "related_group": "render-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Margin chart blank for newly opened stores",
+   "description": "Customer reports the gross margin line chart draws nothing at all when filtered to the three stores opened this quarter; other stores draw normally.",
+   "resolution_notes": "Those stores have no cost data yet, so every margin point was null rather than absent, and the chart component treated an all-null series as invalid and drew nothing, not even axes. Changed the component to keep the axes and show 'No values for this selection' when a series is entirely null. The new stores now show that message, and the line fills in as cost data arrives.",
+   "tags": [
+    "line-chart",
+    "null-values",
+    "empty-state"
+   ],
+   "created_at": "2025-02-06",
+   "status": "resolved"
+  },
+  {
+   "key": "render-002",
+   "family_id": "render-f01",
+   "related_group": "render-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Conversion-rate widget is an empty frame on Sundays",
+   "description": "A store manager says the conversion-rate chart is just an empty frame whenever they pick a Sunday, the day the footfall counters are switched off.",
+   "resolution_notes": "With the counters off, conversion divides by zero visitors and returns null for every hour, and the line chart drew nothing for a series made only of nulls. Added handling that keeps the axes and shows a 'No traffic data' note for the period. Choosing a Sunday now shows the note instead of an empty frame.",
+   "tags": [
+    "null-series",
+    "conversion-rate",
+    "footfall"
+   ],
+   "created_at": "2025-07-10",
+   "status": "resolved"
+  },
+  {
+   "key": "render-003",
+   "family_id": "render-f01",
+   "related_group": "render-g01",
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Forecast chart vanishes for newly launched products",
+   "description": "On the demand forecast dashboard, picking a newly launched product makes the forecast chart disappear and leaves a hole in the layout. Established products are fine.",
+   "resolution_notes": "New products have only null forecast values until enough history exists, and the forecast chart treated the all-null series as an error and collapsed. Applied the same empty-series handling used by line charts, so the widget keeps its frame and explains that a forecast needs eight weeks of sales. New products now show that explanation.",
+   "tags": [
+    "forecast-widget",
+    "null-series",
+    "empty-state"
+   ],
+   "created_at": "2025-12-04",
+   "status": "resolved"
+  },
+  {
+   "key": "render-004",
+   "family_id": "render-f01",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Bar chart is a grey box after calculated fields were tidied",
+   "description": "After an analyst cleaned up old calculated fields, the 'basket size by region' bar chart shows only a grey box with no axes or bars.",
+   "resolution_notes": "The widget still referenced a calculated field that had been deleted, and the chart received an undefined measure that it silently failed to draw. Widgets now show 'This field no longer exists' with a link to edit, and the analyst re-pointed the chart to the replacement field. The chart drew correctly afterwards.",
+   "tags": [
+    "bar-chart",
+    "calculated-field",
+    "broken-reference"
+   ],
+   "created_at": "2025-04-17",
+   "status": "resolved"
+  },
+  {
+   "key": "render-005",
+   "family_id": "render-f01",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Stacked area chart blank in weeks with negative net sales",
+   "description": "The 'net sales by channel' stacked area chart shows nothing for weeks where outlet returns exceed outlet sales. Weeks without negative values render normally.",
+   "resolution_notes": "The stacked area renderer could not compute a baseline when a series contained negative values and abandoned drawing the whole chart. Negative values in stacked charts now draw below the axis on a diverging baseline, with a hint suggesting a bar chart for mixed-sign data. Those weeks now display with the outlet channel below zero.",
+   "tags": [
+    "stacked-area",
+    "negative-values",
+    "baseline"
+   ],
+   "created_at": "2025-09-04",
+   "status": "resolved"
+  },
+  {
+   "key": "render-006",
+   "family_id": "render-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Currency is involved, but the values were correct and only the on-screen formatter failed, so render rather than data_quality or workspace_admin.",
+   "category": "render",
+   "subject": "KPI tiles show a dash after switching display currency",
+   "description": "When one user switches the dashboard's display currency to EUR, every KPI tile shows '—' instead of a number. Switching back to USD brings the numbers back.",
+   "resolution_notes": "The KPI tile formatter had no currency pattern for EUR combined with the user's English (Canada) locale and returned an empty string, which the tile shows as a dash. Added a fallback to the currency's default pattern. The tiles now show euro values for that user and for the other locale combinations we tested.",
+   "tags": [
+    "kpi-tile",
+    "currency-format",
+    "formatter"
+   ],
+   "created_at": "2026-03-12",
+   "status": "resolved"
+  },
+  {
+   "key": "render-007",
+   "family_id": "render-f02",
+   "related_group": "render-g02",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Label fix not visible until a hard refresh",
+   "description": "The customer was told this week's release fixed overlapping labels on stacked bars, but their analysts still see the overlap. One analyst who pressed Ctrl+F5 sees the fix.",
+   "resolution_notes": "The service worker kept serving the application bundle cached before the release until every tab of the app was closed. Shipped a service worker change that checks for a new version on each load and prompts users to reload, replacing the hard-refresh workaround. After the change the analysts got the reload prompt and saw the corrected labels.",
+   "tags": [
+    "service-worker",
+    "stale-bundle",
+    "release"
+   ],
+   "created_at": "2025-03-13",
+   "status": "resolved"
+  },
+  {
+   "key": "render-008",
+   "family_id": "render-f02",
+   "related_group": "render-g02",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Half the team can't see the new waterfall chart",
+   "description": "Some of the customer's team see the new waterfall chart option in the widget editor and others don't, even after signing out and back in.",
+   "resolution_notes": "Users without the option were running an application bundle cached by the service worker before the release, and signing out does not clear it. Advised closing all app tabs or doing a hard refresh, after which everyone saw the waterfall option; automatic detection of new releases was scheduled as the permanent fix.",
+   "tags": [
+    "service-worker",
+    "cached-bundle",
+    "widget-editor"
+   ],
+   "created_at": "2025-01-16",
+   "status": "resolved"
+  },
+  {
+   "key": "render-009",
+   "family_id": "render-f02",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "The data had been ingested successfully and only the displayed results were stale, so render rather than sync.",
+   "category": "render",
+   "subject": "Dashboard shows yesterday's totals after the sync finished",
+   "description": "The morning sync finished at 06:10, but at 08:00 the sales dashboard still shows yesterday's totals. Opening the same widget in the editor shows today's figures.",
+   "resolution_notes": "Dashboard query results were cached for four hours and the cache was not cleared when a sync completed. Added cache invalidation on sync completion for the affected datasets. The next morning the dashboard reflected new data within a minute of the sync finishing.",
+   "tags": [
+    "dashboard-cache",
+    "stale-results",
+    "cache-invalidation"
+   ],
+   "created_at": "2025-06-12",
+   "status": "resolved"
+  },
+  {
+   "key": "render-010",
+   "family_id": "render-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Dashboard list thumbnails weeks out of date",
+   "description": "Preview thumbnails on the dashboard list page are weeks old; one still shows a chart that was deleted long ago.",
+   "resolution_notes": "Thumbnails were regenerated only when a dashboard's title changed, not when its widgets changed. They now regenerate after any layout or widget edit, and we regenerated all of the customer's existing thumbnails once. The list showed current previews immediately and stayed current after later edits.",
+   "tags": [
+    "thumbnails",
+    "dashboard-list",
+    "stale-preview"
+   ],
+   "created_at": "2025-10-23",
+   "status": "resolved"
+  },
+  {
+   "key": "render-011",
+   "family_id": "render-f02",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Both users' settings and the data were correct; the cache served a result computed for another user's week-start setting, so render rather than data_quality or workspace_admin.",
+   "category": "render",
+   "subject": "Two managers see identical weekly totals despite different week starts",
+   "description": "Two regional managers with identical access compare the same shared dashboard. One has weeks starting on Sunday and the other on Monday, yet both see exactly the same weekly totals, and for the Sunday-start manager they do not match her own Sunday-to-Saturday figures.",
+   "resolution_notes": "The results cache key ignored each user's 'week starts on' preference, so a manager whose week starts on Sunday was served results cached for a Monday-start week. Added the preference to the cache key. Each manager now sees totals matching their own week start, and the week boundaries are shown in the widget subtitle.",
+   "tags": [
+    "dashboard-cache",
+    "cache-key",
+    "week-start"
+   ],
+   "created_at": "2026-02-19",
+   "status": "resolved"
+  },
+  {
+   "key": "render-012",
+   "family_id": "render-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Saved layout reverts to the old arrangement on reload",
+   "description": "An analyst rearranges widgets and saves. The change holds until they reload, when the previous arrangement comes back for about ten minutes.",
+   "resolution_notes": "The dashboard definition endpoint returned a cacheable response, so the browser reused the old definition after a reload. Marked the endpoint as no-store and added a version number to definition requests. Saved layouts now appear immediately on reload.",
+   "tags": [
+    "browser-cache",
+    "dashboard-layout",
+    "cache-control"
+   ],
+   "created_at": "2026-08-06",
+   "status": "resolved"
+  },
+  {
+   "key": "render-013",
+   "family_id": "render-f03",
+   "related_group": "render-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Dashboard date filter ignored by two widgets",
+   "description": "When the customer sets the dashboard date filter to last quarter, most widgets update, but the 'Top stores' table and the 'Returns rate' chart keep showing the current month.",
+   "resolution_notes": "Those two widgets had their own date range pinned in widget settings, which overrides the dashboard filter, and the small lock icon signalling this was easy to overlook. Unpinned the ranges at the customer's request and replaced the icon with a visible 'Fixed range' badge. All widgets now follow the dashboard date filter.",
+   "tags": [
+    "date-filter",
+    "pinned-range",
+    "widget-settings"
+   ],
+   "created_at": "2025-02-20",
+   "status": "resolved"
+  },
+  {
+   "key": "render-014",
+   "family_id": "render-f03",
+   "related_group": "render-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Year-over-year chart won't follow the date picker",
+   "description": "The customer's buyer complains that changing the dates at the top of the trading dashboard has no effect on the year-over-year comparison chart.",
+   "resolution_notes": "The chart came from a template that fixed its range to the current calendar year, overriding the date picker, and the override badge was hidden because the widget was in compact mode. Removed the fixed range and made the badge appear on compact widgets too. The comparison chart now changes with the date picker.",
+   "tags": [
+    "date-filter",
+    "fixed-range",
+    "compact-widget"
+   ],
+   "created_at": "2025-08-28",
+   "status": "resolved"
+  },
+  {
+   "key": "render-015",
+   "family_id": "render-f03",
+   "related_group": "render-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Several charts stuck on 'last 30 days'",
+   "description": "Store operations staff report that a handful of charts always show the last 30 days whatever range they choose, and it varies between dashboards built by different colleagues.",
+   "resolution_notes": "The affected dashboards had all been cloned from one original whose widgets had a 30-day range pinned, so every copy inherited the override. Showed the admin the 'Fixed range' badge and bulk-cleared the pinned ranges on the copies they selected. Those charts now respond to the dashboard filter.",
+   "tags": [
+    "date-filter",
+    "cloned-dashboard",
+    "pinned-range"
+   ],
+   "created_at": "2026-05-14",
+   "status": "resolved"
+  },
+  {
+   "key": "render-016",
+   "family_id": "render-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Clicking a region doesn't filter the other widgets",
+   "description": "Cross-filtering stopped working on the regional dashboard: clicking a region in the bar chart highlights it, but the table and map next to it stay unchanged.",
+   "resolution_notes": "The table and map had been switched to a different dataset whose region field was not linked to the bar chart's, and cross-filters only pass between widgets sharing a field reference. Linked the two region fields in the dashboard's filter mapping. Clicking a region now filters the table and the map.",
+   "tags": [
+    "cross-filter",
+    "field-mapping",
+    "regional-dashboard"
+   ],
+   "created_at": "2025-05-08",
+   "status": "resolved"
+  },
+  {
+   "key": "render-017",
+   "family_id": "render-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Sharing is involved, but the recipients had access; the filters simply weren't carried into their view, so render rather than perm.",
+   "category": "render",
+   "subject": "Shared link opens without the sender's filters",
+   "description": "A merchandising lead copies the browser address to share a filtered view with store managers, but recipients open the unfiltered dashboard.",
+   "resolution_notes": "Filter state was kept only in the browser session, not in the URL, so the copied address carried no filters. Added a 'Copy link with filters' option that encodes the current filters in the link. Store managers who opened the new links saw the same filtered view as the sender.",
+   "tags": [
+    "shared-link",
+    "filter-state",
+    "url-parameters"
+   ],
+   "created_at": "2025-11-20",
+   "status": "resolved"
+  },
+  {
+   "key": "render-018",
+   "family_id": "render-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Store filter selection has no effect after store renames",
+   "description": "Choosing a store in the dashboard's store filter updates the filter chip, but every chart keeps showing all-store totals. This began after the customer renamed several stores.",
+   "resolution_notes": "The filter matched widgets by store name, and the renamed stores no longer matched the cached filter options, so the condition resolved to nothing and was dropped. Changed store filters to match on store IDs and refreshed the cached options. Selecting any store, renamed or not, now filters all charts.",
+   "tags": [
+    "store-filter",
+    "renamed-stores",
+    "filter-matching"
+   ],
+   "created_at": "2026-09-17",
+   "status": "resolved"
+  },
+  {
+   "key": "render-019",
+   "family_id": "render-f04",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Widgets overlap at 125% display scaling",
+   "description": "Users whose Windows display scaling is set to 125% see the bottom row of widgets drawn over the row above it. At 100% the layout is fine.",
+   "resolution_notes": "Widget heights were calculated in device pixels while positions used CSS pixels, so rows overlapped at any scaling other than 100%. Corrected the calculation to use CSS pixels throughout. Dashboards rendered without overlap at 100%, 125% and 150% scaling in testing and on the customer's machines.",
+   "tags": [
+    "layout",
+    "display-scaling",
+    "widget-overlap"
+   ],
+   "created_at": "2025-01-23",
+   "status": "resolved"
+  },
+  {
+   "key": "render-020",
+   "family_id": "render-f04",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Half the ultra-wide monitor left empty",
+   "description": "On a 3440-pixel-wide monitor the dashboard fills only the left half and the right side stays blank.",
+   "resolution_notes": "The grid had a 1920-pixel maximum width intended to keep charts readable on large screens. Added a 'Fit to width' view option that lets the grid expand on wide displays. The customer's analysts enabled it, and the dashboard now fills their monitors.",
+   "tags": [
+    "layout",
+    "ultra-wide",
+    "grid-width"
+   ],
+   "created_at": "2025-06-26",
+   "status": "resolved"
+  },
+  {
+   "key": "render-021",
+   "family_id": "render-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Resized chart snaps back to its original width",
+   "description": "An analyst drags a chart wider, and the moment they let go it springs back to its original size. Other widgets resize normally.",
+   "resolution_notes": "The chart's saved properties had identical minimum and maximum widths, left over from the template it was built from. Cleared the size constraints and stopped templates from saving equal minimum and maximum widths. The analyst could then resize the chart freely.",
+   "tags": [
+    "layout",
+    "widget-resize",
+    "size-constraints"
+   ],
+   "created_at": "2025-10-02",
+   "status": "resolved"
+  },
+  {
+   "key": "render-022",
+   "family_id": "render-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Phone browser shows a shrunken desktop layout",
+   "description": "Store managers opening the dashboard in their phone browser get the full desktop layout scaled down, with unreadable text and pinch-zoom needed for everything.",
+   "resolution_notes": "The dashboard had been saved with 'Lock desktop layout' turned on, which disables the single-column mobile layout. The admin turned the option off for the store dashboard. On phones the widgets now stack in one readable column.",
+   "tags": [
+    "layout",
+    "mobile-browser",
+    "responsive"
+   ],
+   "created_at": "2026-02-26",
+   "status": "resolved"
+  },
+  {
+   "key": "render-023",
+   "family_id": "render-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Text widget spills over the chart below",
+   "description": "A long note in a text widget runs out of its box and covers the top of the chart underneath.",
+   "resolution_notes": "Text widgets had no overflow handling, so content taller than the widget was drawn outside it. Text widgets now scroll internally when their content exceeds the widget height. The customer's note scrolls within its box and the chart below is fully visible.",
+   "tags": [
+    "layout",
+    "text-widget",
+    "overflow"
+   ],
+   "created_at": "2026-07-02",
+   "status": "resolved"
+  },
+  {
+   "key": "render-024",
+   "family_id": "render-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Axis labels read '1000K' instead of '1M'",
+   "description": "Y-axis labels on the sales trend chart go 900K, 1000K, 1.1M. The customer's finance director called it sloppy.",
+   "resolution_notes": "The abbreviation logic picked the unit before rounding, so 999,600 was labelled in thousands and then rounded up to 1000K. Changed it to round first and choose the unit afterwards. The axis now reads 900K, 1M, 1.1M.",
+   "tags": [
+    "axis-labels",
+    "number-abbreviation",
+    "trend-chart"
+   ],
+   "created_at": "2025-04-03",
+   "status": "resolved"
+  },
+  {
+   "key": "render-025",
+   "family_id": "render-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Tooltip shows 0.27 for a percentage metric",
+   "description": "Hovering over the return-rate line shows '0.27' rather than '27%', while the axis labels on the same chart are correct.",
+   "resolution_notes": "Tooltips used the raw value formatter instead of the metric's percentage format, which only the axis applied. Made tooltips use the metric's configured format. Hovering now shows '27.0%'.",
+   "tags": [
+    "tooltip",
+    "percent-format",
+    "return-rate"
+   ],
+   "created_at": "2025-08-07",
+   "status": "resolved"
+  },
+  {
+   "key": "render-026",
+   "family_id": "render-f05",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The workspace setting was saved correctly; the charts failed to apply it on screen, so render rather than workspace_admin.",
+   "category": "render",
+   "subject": "Charts ignore the parentheses style for negative numbers",
+   "description": "The workspace is set to show negative numbers in parentheses. Tables follow it, but chart labels and tooltips still show a minus sign.",
+   "resolution_notes": "The setting was stored correctly, but the chart formatting library was initialised without it. Passed the negative-number style through to chart formatters. Chart labels and tooltips now show (1,240) just like the tables.",
+   "tags": [
+    "negative-numbers",
+    "number-format",
+    "chart-labels"
+   ],
+   "created_at": "2025-12-11",
+   "status": "resolved"
+  },
+  {
+   "key": "render-027",
+   "family_id": "render-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Long product names cut off with no way to read them",
+   "description": "In the top-products bar chart, names longer than about 20 characters end in '…' and hovering shows nothing, so the merchandising team can't tell similar products apart.",
+   "resolution_notes": "Category labels were truncated to fit and the shortened text had no tooltip. Added a hover tooltip with the full name and an option to wrap labels onto two lines. The team can now read full product names on hover or with wrapping on.",
+   "tags": [
+    "axis-labels",
+    "label-truncation",
+    "bar-chart"
+   ],
+   "created_at": "2026-04-23",
+   "status": "resolved"
+  },
+  {
+   "key": "render-028",
+   "family_id": "render-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The values were right and only the displayed precision was wrong, so render rather than data_quality.",
+   "category": "render",
+   "subject": "Average selling price tile shows three decimals",
+   "description": "The average-selling-price KPI tile displays values like '$24.567', while prices elsewhere in the product have two decimals.",
+   "resolution_notes": "The tile was created before the metric had a format and kept 'automatic' precision, which shows up to three decimals. Applied the metric's currency format to existing tiles and made new tiles inherit it. The tile now reads '$24.57'.",
+   "tags": [
+    "kpi-tile",
+    "decimal-places",
+    "currency-format"
+   ],
+   "created_at": "2026-10-15",
+   "status": "resolved"
+  },
+  {
+   "key": "render-029",
+   "family_id": "render-f06",
+   "related_group": "render-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Channel colours swap when one store is selected",
+   "description": "In the sales-by-channel chart, online is blue and in-store is green company-wide, but when a store with no online sales is selected, in-store turns blue.",
+   "resolution_notes": "Colours were handed out by series position rather than by category value, so when one series was absent the remaining ones shifted colour. Changed colour assignment to key on the category value. In-store now stays green whatever the filter.",
+   "tags": [
+    "series-colors",
+    "color-mapping",
+    "channel-chart"
+   ],
+   "created_at": "2025-03-20",
+   "status": "resolved"
+  },
+  {
+   "key": "render-030",
+   "family_id": "render-f06",
+   "related_group": "render-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Same region, different colour in neighbouring charts",
+   "description": "On the customer's executive dashboard, North is orange in the map legend but purple in the bar chart right beside it, and board members found it confusing.",
+   "resolution_notes": "Each chart chose colours by the order of regions in its own result, and the bar chart left out a region with no sales, which shifted the order. Switched both charts to colour by region value from a shared palette. North is now orange in both.",
+   "tags": [
+    "series-colors",
+    "consistent-palette",
+    "executive-dashboard"
+   ],
+   "created_at": "2025-09-11",
+   "status": "resolved"
+  },
+  {
+   "key": "render-031",
+   "family_id": "render-f06",
+   "related_group": "render-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Pie slice colours change through the day",
+   "description": "On a store's category-mix pie chart the slice colours seem to change between morning and afternoon. The legend always matches, but staff keep misreading it.",
+   "resolution_notes": "Slices were sorted by size and coloured by position, so when categories changed rank during the day their colours moved with them. Colour is now assigned by category value regardless of rank. Category colours stayed fixed across the next day's refreshes.",
+   "tags": [
+    "pie-chart",
+    "series-colors",
+    "color-mapping"
+   ],
+   "created_at": "2026-04-09",
+   "status": "resolved"
+  },
+  {
+   "key": "render-032",
+   "family_id": "render-f06",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The branding settings were saved correctly; the charts were not using them on screen, so render rather than workspace_admin.",
+   "category": "render",
+   "subject": "Brand palette not applied to charts",
+   "description": "The admin entered the company brand colours in workspace branding. The navigation bar uses them, but every chart still has the default palette.",
+   "resolution_notes": "The customer's dashboards had been created with an explicit 'Default' palette, which overrides the workspace brand palette. Changed their dashboards to 'Workspace brand' and made that the default for new dashboards. Charts now use the brand colours.",
+   "tags": [
+    "brand-palette",
+    "chart-colors",
+    "theme"
+   ],
+   "created_at": "2025-07-17",
+   "status": "resolved"
+  },
+  {
+   "key": "render-033",
+   "family_id": "render-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Legend covers the line chart when many stores are selected",
+   "description": "With more than about 25 stores selected, the legend grows until it hides most of the line chart.",
+   "resolution_notes": "The legend had no maximum height and expanded with every series. Limited it to a scrollable area of one third of the widget and added a 'Top N plus Other' option for charts with many series. With 40 stores selected the lines are fully visible and the legend scrolls.",
+   "tags": [
+    "legend",
+    "many-series",
+    "line-chart"
+   ],
+   "created_at": "2026-06-04",
+   "status": "resolved"
+  },
+  {
+   "key": "render-034",
+   "family_id": "render-f07",
+   "related_group": "render-g05",
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Hourly sales chart white on MacBooks, fine on Windows",
+   "description": "The full-year hourly sales chart is a white rectangle on the finance team's MacBooks in Safari. Colleagues on Windows laptops see it normally.",
+   "resolution_notes": "A year of hourly points on a high-resolution display pushed the chart's canvas beyond Safari's maximum canvas size, and Safari silently declined to draw it. Changed the chart to downsample to the visible pixel width and cap canvas size on high-density screens. The chart now renders in Safari on the MacBooks with no visible loss of detail.",
+   "tags": [
+    "safari",
+    "canvas-limit",
+    "high-dpi"
+   ],
+   "created_at": "2025-02-27",
+   "status": "resolved"
+  },
+  {
+   "key": "render-035",
+   "family_id": "render-f07",
+   "related_group": "render-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Long-range trend charts blank on area managers' iPads",
+   "description": "Area managers on iPads see empty spaces where the long-range trend charts should be. On their desktops the same dashboards look fine.",
+   "resolution_notes": "The iPad browser has a lower canvas memory ceiling, and the trend charts at full Retina resolution exceeded it, so drawing failed without any error. Extended the downsampling and canvas size cap to these trend charts. The charts now display on the area managers' iPads.",
+   "tags": [
+    "ipad",
+    "canvas-memory",
+    "trend-chart"
+   ],
+   "created_at": "2025-08-21",
+   "status": "resolved"
+  },
+  {
+   "key": "render-036",
+   "family_id": "render-f07",
+   "related_group": "render-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Transaction scatter plot empty in Safari",
+   "description": "The basket-value scatter plot, which plots every transaction for the month, is empty in Safari. Chrome draws it, though slowly.",
+   "resolution_notes": "Scatter plots were not covered by the existing canvas size cap, so on Retina screens their canvas exceeded Safari's limit and was never drawn. Extended the cap to scatter plots and switched those above 50,000 points to density rendering. The plot now renders in Safari and loads faster in Chrome.",
+   "tags": [
+    "safari",
+    "scatter-plot",
+    "canvas-limit"
+   ],
+   "created_at": "2026-01-15",
+   "status": "resolved"
+  },
+  {
+   "key": "render-037",
+   "family_id": "render-f07",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "All chart areas empty for one user only",
+   "description": "One user sees every chart area empty while tables and KPI tiles display normally. Colleagues opening the same dashboard see charts.",
+   "resolution_notes": "A content-blocking browser extension matched the word 'analytics' in our chart library's file path and blocked the script. The user allowed our domain in the extension as an interim step, and we renamed the chart bundle path so it no longer matches common blocklist patterns. After the release the user's charts loaded with the extension fully enabled.",
+   "tags": [
+    "browser-extension",
+    "blocked-script",
+    "chart-library"
+   ],
+   "created_at": "2025-11-13",
+   "status": "resolved"
+  },
+  {
+   "key": "render-038",
+   "family_id": "render-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Charts go blurry on an external 4K monitor",
+   "description": "When analysts drag the browser window from their laptop screen to an external 4K monitor, the charts turn blurry, while table text stays sharp.",
+   "resolution_notes": "Charts sized their canvas from the pixel ratio detected at page load and never updated when the window moved to a screen with a different ratio. Charts now redraw whenever the pixel ratio changes. Moving the window between screens keeps charts sharp.",
+   "tags": [
+    "high-dpi",
+    "multi-monitor",
+    "canvas"
+   ],
+   "created_at": "2026-06-18",
+   "status": "resolved"
+  },
+  {
+   "key": "render-039",
+   "family_id": "render-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The embed is signed in correctly; the problem is how its content is sized in the frame, so render rather than auth.",
+   "category": "render",
+   "subject": "Embedded dashboard cut off with no scrollbar",
+   "description": "The customer embedded the store performance dashboard on an intranet page. Only the top third is visible and the frame has no scrollbar.",
+   "resolution_notes": "The intranet page set a fixed 600-pixel frame height, and our embed did not report its content height. Enabled the auto-resize option, which posts the content height to the host page, and gave the customer the two-line script for their intranet. The frame now grows to show the whole dashboard.",
+   "tags": [
+    "embedded-dashboard",
+    "iframe-height",
+    "auto-resize"
+   ],
+   "created_at": "2025-03-06",
+   "status": "resolved"
+  },
+  {
+   "key": "render-040",
+   "family_id": "render-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Embedded charts dark on a white partner portal",
+   "description": "In the customer's partner portal, embedded charts sometimes appear on a dark background against the white page. It seems to depend on the viewer's computer.",
+   "resolution_notes": "Embedded views followed each viewer's operating-system colour scheme, so viewers using dark mode got the dark theme. Added a 'theme' parameter to embed links and set the customer's embed to the light theme. Charts now match the portal for every viewer.",
+   "tags": [
+    "embedded-dashboard",
+    "theme-parameter",
+    "dark-mode"
+   ],
+   "created_at": "2025-07-31",
+   "status": "resolved"
+  },
+  {
+   "key": "render-041",
+   "family_id": "render-f08",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Embedded dashboard ignores the period passed in its link",
+   "description": "The customer's portal adds a period parameter to the embed link so the dashboard opens on last week, but the embedded view always opens on the current month.",
+   "resolution_notes": "Embed links only accepted filter parameters with the 'f_' prefix, and the portal used the plain name from an outdated guide. Updated the guide and made embeds accept both forms. The embedded dashboard now opens on last week.",
+   "tags": [
+    "embedded-dashboard",
+    "url-parameters",
+    "date-filter"
+   ],
+   "created_at": "2025-12-18",
+   "status": "resolved"
+  },
+  {
+   "key": "render-042",
+   "family_id": "render-f08",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Embedded dashboard tiny inside a narrow portal tile",
+   "description": "Inside a narrow tile on the customer's portal, the embedded dashboard shows the full desktop layout shrunk so far that nothing is legible.",
+   "resolution_notes": "Responsive breakpoints were based on the browser window width rather than the frame width, so the embed always picked the desktop layout. Changed the breakpoints to use the container width. In the narrow tile the dashboard now switches to its single-column layout.",
+   "tags": [
+    "embedded-dashboard",
+    "responsive",
+    "container-width"
+   ],
+   "created_at": "2026-03-26",
+   "status": "resolved"
+  },
+  {
+   "key": "render-043",
+   "family_id": "render-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Embedded chart flickers for ten seconds on load",
+   "description": "Embedded charts on the customer's intranet flash and redraw several times a second for about ten seconds before settling down.",
+   "resolution_notes": "The intranet's own resize handler and our embed's height messages triggered each other, so every height change caused another resize. The embed now reports only changes larger than a few pixels and ignores changes it caused itself. Embedded charts draw once and stay still.",
+   "tags": [
+    "embedded-dashboard",
+    "resize-loop",
+    "flicker"
+   ],
+   "created_at": "2026-08-27",
+   "status": "resolved"
+  },
+  {
+   "key": "render-044",
+   "family_id": "render-f09",
+   "related_group": "render-g06",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": "The daily totals were bucketed correctly; only the axis labels shifted, so render rather than data_quality.",
+   "category": "render",
+   "subject": "Daily bars labelled a day early for US viewers",
+   "description": "Head office in London and the US buying team look at the same daily sales chart. For the US team, Monday's bar is labelled Sunday.",
+   "resolution_notes": "Data was bucketed by day in the workspace time zone (London), but axis labels were formatted in each viewer's browser time zone, where London midnight falls on the previous day. This release formats time-axis labels in the workspace time zone for every viewer, replacing the per-user profile workaround. Both teams now see Monday's bar labelled Monday.",
+   "tags": [
+    "time-axis",
+    "timezone-labels",
+    "daily-chart"
+   ],
+   "created_at": "2025-05-01",
+   "status": "resolved"
+  },
+  {
+   "key": "render-045",
+   "family_id": "render-f09",
+   "related_group": "render-g06",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": "Weekly totals were correct; only the labels shifted, so render rather than data_quality.",
+   "category": "render",
+   "subject": "Weeks appear to start on Sunday for an analyst abroad",
+   "description": "An analyst working from Vancouver sees the weekly sales bars labelled as weeks starting on Sunday, while the team in Germany sees the same weeks starting on Monday.",
+   "resolution_notes": "Weeks were bucketed correctly in the workspace's Berlin time zone, but the chart formatted each bucket start in the analyst's browser zone, where Monday 00:00 in Berlin is still Sunday. As a workaround the analyst set their profile time zone to Berlin, which the chart uses in place of the browser zone; labelling axes in the workspace zone for everyone was tracked as the permanent fix. The analyst's weekly bars now start on Monday.",
+   "tags": [
+    "time-axis",
+    "weekly-chart",
+    "browser-timezone"
+   ],
+   "created_at": "2025-02-13",
+   "status": "resolved"
+  },
+  {
+   "key": "render-046",
+   "family_id": "render-f09",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Footfall totals were correct; only the time labels were ambiguous, so render rather than data_quality.",
+   "category": "render",
+   "subject": "Hourly chart shows 01:00 twice on the night clocks changed",
+   "description": "On the hourly footfall chart for the night the clocks went back, the axis shows 01:00 twice and the bars look duplicated. Store staff assumed the counter had double-counted.",
+   "resolution_notes": "The data held two distinct hours, before and after the change, but the axis showed the local hour without its offset, so the repeated hour looked like a duplicate. Labels for repeated hours now include the offset, such as '01:00 BST' and '01:00 GMT'. The chart for that night reads clearly, and its totals matched the counter's own export.",
+   "tags": [
+    "time-axis",
+    "daylight-saving",
+    "hourly-chart"
+   ],
+   "created_at": "2025-11-06",
+   "status": "resolved"
+  },
+  {
+   "key": "render-047",
+   "family_id": "render-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Monthly chart skips the February label",
+   "description": "The monthly revenue chart labels January, March, April and so on; February's bar is there but has no label.",
+   "resolution_notes": "The axis tick generator placed ticks every 30 days, which jumped over February's start date. Switched monthly axes to calendar-based ticks. Every month is now labelled.",
+   "tags": [
+    "time-axis",
+    "tick-labels",
+    "monthly-chart"
+   ],
+   "created_at": "2026-01-08",
+   "status": "resolved"
+  },
+  {
+   "key": "render-048",
+   "family_id": "render-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "No values were wrong; the chart's default drawing of missing dates was the issue, so render rather than data_quality.",
+   "category": "render",
+   "subject": "Closed public holidays drawn as drops to zero",
+   "description": "Stores closed on public holidays show sharp dips to zero on the daily trend line, which the regional director keeps reading as a sales collapse. They want closed days skipped.",
+   "resolution_notes": "Line charts filled missing dates with zero by default, which is misleading for days when stores are shut. Added a 'Gaps for missing dates' option and turned it on for the customer's trend charts. Holidays now appear as breaks in the line rather than drops.",
+   "tags": [
+    "time-axis",
+    "missing-dates",
+    "line-chart"
+   ],
+   "created_at": "2026-07-23",
+   "status": "resolved"
+  },
+  {
+   "key": "render-049",
+   "family_id": "render-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The store records were complete; the map's postal-code lookup used only for placing pins failed, so render rather than data_quality.",
+   "category": "render",
+   "subject": "No map pins for any Canadian store",
+   "description": "On the store map, US stores have pins but none of the 18 Canadian stores appear, even though the store table lists them with full addresses.",
+   "resolution_notes": "The map placed pins with a postal-code lookup that only recognised five-digit codes, so Canadian postal codes returned no coordinates. Added international postal-code support and made the map use latitude and longitude from store records where present. All 18 Canadian stores now appear.",
+   "tags": [
+    "store-map",
+    "geocoding",
+    "postal-codes"
+   ],
+   "created_at": "2025-04-24",
+   "status": "resolved"
+  },
+  {
+   "key": "render-050",
+   "family_id": "render-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "One region grey on the sales map despite having sales",
+   "description": "The sales-by-region map leaves one region grey with 'No data', yet the region table beside it shows sales for that region.",
+   "resolution_notes": "The region was written 'Île-de-France' in the data and 'Ile-de-France' in the map's boundary file, so name matching failed on the accent. Changed the map to match regions by code instead of name. The region is now shaded with its sales.",
+   "tags": [
+    "region-map",
+    "region-matching",
+    "boundary-file"
+   ],
+   "created_at": "2025-08-14",
+   "status": "resolved"
+  },
+  {
+   "key": "render-051",
+   "family_id": "render-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "Not a customer network issue; the tile address in our own configuration was wrong, so render rather than connectivity.",
+   "category": "render",
+   "subject": "Store map has pins but no streets or borders",
+   "description": "The store map shows pins floating on a plain grey background with no streets, coastlines or borders.",
+   "resolution_notes": "After a configuration move the app still requested background tiles from an outdated tile service address, and every request returned 404. Updated the tile address and added a fallback base map. The street map background now loads behind the pins.",
+   "tags": [
+    "map-tiles",
+    "base-map",
+    "store-map"
+   ],
+   "created_at": "2025-12-23",
+   "status": "resolved"
+  },
+  {
+   "key": "render-052",
+   "family_id": "render-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "City-centre store pins pile into one blob",
+   "description": "Twelve stores in one city centre are drawn as a single blob of overlapping pins, so the area manager cannot click any of them.",
+   "resolution_notes": "Clustering was switched off for this map. Enabled clustering with a count badge that expands on zoom, and spread out pins that share identical coordinates. The manager can now zoom in and click each store.",
+   "tags": [
+    "store-map",
+    "pin-clustering"
+   ],
+   "created_at": "2026-05-28",
+   "status": "resolved"
+  },
+  {
+   "key": "render-053",
+   "family_id": "render-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Map zooms to the ocean when a single store is filtered",
+   "description": "Filtering the store map to one particular store recentres it on an empty patch of ocean off the African coast.",
+   "resolution_notes": "That store had blank coordinates, which the map read as latitude 0, longitude 0 and zoomed to. The map now ignores missing coordinates and shows a 'Location unknown' badge, and the admin added the store's address so it could be placed. The store now appears in the right city.",
+   "tags": [
+    "store-map",
+    "missing-coordinates",
+    "auto-zoom"
+   ],
+   "created_at": "2026-10-01",
+   "status": "resolved"
+  },
+  {
+   "key": "render-054",
+   "family_id": "render-f11",
+   "related_group": "render-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Table values drift under the wrong headers when scrolling",
+   "description": "In the store ranking table, values slide under the wrong column headers after scrolling down. The buyer says it only happens on their own laptop.",
+   "resolution_notes": "The virtualized rows calculated column widths assuming 100% zoom, while the buyer's browser was at 90%, so row cells and header cells rounded differently. Rows and headers now share one set of computed widths. Columns stayed aligned at every zoom level we tested, including the buyer's.",
+   "tags": [
+    "table-widget",
+    "column-alignment",
+    "browser-zoom"
+   ],
+   "created_at": "2025-02-14",
+   "status": "resolved"
+  },
+  {
+   "key": "render-055",
+   "family_id": "render-f11",
+   "related_group": "render-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Rows overlap halfway down the SKU table when zoomed out",
+   "description": "Area managers who zoom out to fit more of the SKU table on screen find rows drawn on top of each other partway down the list.",
+   "resolution_notes": "The virtualized table assumed a fixed row height in screen pixels that no longer matched once the page was zoomed, so row positions drifted further the lower you went. Rows are now positioned from measured heights that account for zoom. The SKU table renders cleanly from 67% to 150% zoom.",
+   "tags": [
+    "table-widget",
+    "virtualized-rows",
+    "browser-zoom"
+   ],
+   "created_at": "2025-09-18",
+   "status": "resolved"
+  },
+  {
+   "key": "render-056",
+   "family_id": "render-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Pivot totals row labelled 'West' instead of 'Total'",
+   "description": "The pivot widget's totals row carries the last region's name, 'West', so readers assume West is the grand total.",
+   "resolution_notes": "When the row field had a custom display name, the pivot reused the last row label for the totals row. Fixed the labelling logic. The totals row now reads 'Total'.",
+   "tags": [
+    "pivot-table",
+    "totals-row",
+    "row-labels"
+   ],
+   "created_at": "2025-06-05",
+   "status": "resolved"
+  },
+  {
+   "key": "render-057",
+   "family_id": "render-f11",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Conditional formatting visible in editor, not on dashboard",
+   "description": "The analyst set red and green conditional formatting on the margin column. It shows in the widget editor but not on the published dashboard.",
+   "resolution_notes": "The published view loaded the table from a saved snapshot of widget settings that predated the formatting rules. Saving a widget now also refreshes the published snapshot. Red and green cells now appear on the dashboard.",
+   "tags": [
+    "table-widget",
+    "conditional-formatting",
+    "published-view"
+   ],
+   "created_at": "2026-02-05",
+   "status": "resolved"
+  },
+  {
+   "key": "render-058",
+   "family_id": "render-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Table header scrolls away in full-screen mode",
+   "description": "When a table widget is expanded to full screen, the header row scrolls off with the data and users lose track of the columns.",
+   "resolution_notes": "Full-screen mode used a different scrolling container from the inline widget, and the sticky header was attached to the original one. The header now attaches to whichever container scrolls. It stays visible in full screen.",
+   "tags": [
+    "table-widget",
+    "sticky-header",
+    "full-screen"
+   ],
+   "created_at": "2026-09-03",
+   "status": "resolved"
+  },
+  {
+   "key": "render-059",
+   "family_id": "render-f12",
+   "related_group": "render-g07",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "'Loading chunk failed' when adding a funnel widget",
+   "description": "Users who have had the app open since yesterday get 'Loading chunk 47 failed' when adding a funnel widget; after a reload it works.",
+   "resolution_notes": "An overnight release replaced the app's code files, and tabs opened before it asked for a file name that no longer existed. Previous releases' files now stay available for 72 hours, and the app reloads itself if a chunk fails to load, replacing the manual refresh workaround. Users with old tabs added widgets without errors after this change.",
+   "tags": [
+    "chunk-load-error",
+    "release",
+    "widget-editor"
+   ],
+   "created_at": "2025-05-15",
+   "status": "resolved"
+  },
+  {
+   "key": "render-060",
+   "family_id": "render-f12",
+   "related_group": "render-g07",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "One widget spins forever the morning after an update",
+   "description": "The morning after an update, some store managers have a single widget on the trading dashboard that never stops loading while the rest are fine. A browser refresh clears it.",
+   "resolution_notes": "Their tabs had stayed open since before the release and requested the cohort chart's code file, which the release had removed. Advised refreshing open tabs after releases as the workaround; keeping old release files available after deployment was tracked as the permanent fix. All managers' widgets loaded after a refresh.",
+   "tags": [
+    "loading-spinner",
+    "chunk-load-error",
+    "release"
+   ],
+   "created_at": "2025-03-27",
+   "status": "resolved"
+  },
+  {
+   "key": "render-061",
+   "family_id": "render-f12",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "One misconfigured gauge turns the whole dashboard white",
+   "description": "After an editor added a gauge widget, the entire dashboard became a white page with no widgets at all.",
+   "resolution_notes": "The gauge's minimum was higher than its maximum, which threw an error that nothing contained, so the whole page failed. Each widget now has its own error boundary that shows an error card, and the editor validates gauge ranges. The dashboard loaded with the gauge showing 'Invalid range', and the editor then corrected it.",
+   "tags": [
+    "error-boundary",
+    "gauge-widget",
+    "white-page"
+   ],
+   "created_at": "2025-10-09",
+   "status": "resolved"
+  },
+  {
+   "key": "render-062",
+   "family_id": "render-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "An odd character came from source data, but the data was otherwise correct and the crash happened while drawing labels, so render rather than data_quality.",
+   "category": "render",
+   "subject": "'Something went wrong' only for the Nordics region",
+   "description": "The basket analysis widget displays 'Something went wrong' when filtered to the Nordics region and works for every other region.",
+   "resolution_notes": "One product in that region had an invisible control character in its name, and the chart's text measurement crashed on it. The renderer now strips control characters from labels before drawing. The widget renders for the Nordics region.",
+   "tags": [
+    "widget-error",
+    "control-characters",
+    "label-rendering"
+   ],
+   "created_at": "2026-03-05",
+   "status": "resolved"
+  },
+  {
+   "key": "render-063",
+   "family_id": "render-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "A browser policy triggered it, but no network path was blocked; the chart engine could not draw without web workers, so render rather than connectivity.",
+   "category": "render",
+   "subject": "Widgets stay grey placeholders after browser policy rollout",
+   "description": "Since the customer's IT rolled out a new browser policy, dashboards show grey placeholder boxes that never fill in, with no error message.",
+   "resolution_notes": "The new policy blocked web workers, which the chart engine used to prepare data, and the engine waited indefinitely for a worker that never started. Added a fallback that prepares data on the main thread when workers are unavailable. Widgets now fill in on the managed browsers, slightly slower for the largest charts.",
+   "tags": [
+    "web-workers",
+    "browser-policy",
+    "placeholders"
+   ],
+   "created_at": "2026-08-20",
+   "status": "resolved"
+  },
+  {
+   "key": "render-064",
+   "family_id": "render-f13",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Looks like stale data, but the data was current; the TV display stopped redrawing, so render rather than sync or perf.",
+   "category": "render",
+   "subject": "Shop-floor leaderboard freezes by midday",
+   "description": "The sales leaderboard on the shop-floor TV is right in the morning but frozen by midday, although the clock in the corner keeps ticking.",
+   "resolution_notes": "TV mode refreshed on a timer, but a memory leak in chart redraws slowed the TV's browser until refreshes no longer completed. Fixed the leak by reusing chart instances on refresh and added a full page reload every 12 hours. The leaderboard stayed current through a three-day test.",
+   "tags": [
+    "tv-mode",
+    "auto-refresh",
+    "memory-leak"
+   ],
+   "created_at": "2025-01-09",
+   "status": "resolved"
+  },
+  {
+   "key": "render-065",
+   "family_id": "render-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "TV rotation skips the returns dashboard",
+   "description": "The customer set TV mode to rotate through four dashboards, but the returns dashboard never appears; the screen goes from the third straight back to the first.",
+   "resolution_notes": "The returns dashboard took longer to load than the 30-second rotation interval, and the rotation skipped any dashboard that had not finished loading. Rotation now waits for a dashboard to load before starting its timer. All four dashboards appeared in turn over an afternoon of testing.",
+   "tags": [
+    "tv-mode",
+    "dashboard-rotation"
+   ],
+   "created_at": "2025-07-24",
+   "status": "resolved"
+  },
+  {
+   "key": "render-066",
+   "family_id": "render-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "TV-mode text unreadable on a new 4K screen",
+   "description": "On the new 4K screen in the distribution centre office, TV-mode text is too small to read from more than a metre away.",
+   "resolution_notes": "TV mode took the TV browser's reported 1:1 pixel ratio at face value, so the layout was drawn for a 3840-pixel-wide screen. Added a scale setting to TV mode and set it to 200% for this screen. The text is now readable from across the office.",
+   "tags": [
+    "tv-mode",
+    "4k-display",
+    "scaling"
+   ],
+   "created_at": "2025-11-27",
+   "status": "resolved"
+  },
+  {
+   "key": "render-067",
+   "family_id": "render-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Leaderboard screen goes black after ten minutes",
+   "description": "The leaderboard screen on the shop floor turns black after roughly ten minutes unless someone nudges the mouse.",
+   "resolution_notes": "The display device's power saving blanked the screen because the page never asked to stay awake. TV mode now requests a screen wake lock where the device supports it, and we gave the customer's IT team the device setting for older models. The screen stayed on through a full trading day.",
+   "tags": [
+    "tv-mode",
+    "wake-lock",
+    "power-saving"
+   ],
+   "created_at": "2026-04-16",
+   "status": "resolved"
+  },
+  {
+   "key": "render-068",
+   "family_id": "render-f13",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "TV mode cuts off the bottom row of widgets",
+   "description": "In TV mode the bottom row of the store dashboard falls off the 16:9 screen, yet the same dashboard fits in a normal browser window.",
+   "resolution_notes": "TV mode kept the dashboard's tall layout and scaled to the screen width only. TV mode now scales to fit both width and height. The whole dashboard fits on the 16:9 screen.",
+   "tags": [
+    "tv-mode",
+    "aspect-ratio",
+    "fit-to-screen"
+   ],
+   "created_at": "2026-10-22",
+   "status": "resolved"
+  },
+  {
+   "key": "render-069",
+   "family_id": "render-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Axis labels invisible in dark mode",
+   "description": "With dark mode on, axis labels and gridlines on all line charts are black on a near-black background and impossible to read.",
+   "resolution_notes": "Line charts used a hard-coded dark grey for axes instead of theme colours. Switched axes and gridlines to theme tokens. Labels are readable in both light and dark mode.",
+   "tags": [
+    "dark-mode",
+    "axis-labels",
+    "contrast"
+   ],
+   "created_at": "2025-03-31",
+   "status": "resolved"
+  },
+  {
+   "key": "render-070",
+   "family_id": "render-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Values inside navy bars can't be read",
+   "description": "Data labels printed inside the bars are dark text on the dark navy of the customer's brand palette, so nobody can read the numbers.",
+   "resolution_notes": "Data labels used one fixed text colour whatever the bar's fill. Labels now pick light or dark text based on the contrast ratio with the fill. Values are readable on all of the customer's brand colours.",
+   "tags": [
+    "data-labels",
+    "contrast",
+    "brand-palette"
+   ],
+   "created_at": "2025-08-01",
+   "status": "resolved"
+  },
+  {
+   "key": "render-071",
+   "family_id": "render-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Low-sales hours vanish from heatmap in dark theme",
+   "description": "In the hour-by-day heatmap, cells with low sales disappear when a user switches to the dark theme, making it look as if the store sold nothing at those times.",
+   "resolution_notes": "The heatmap's colour scale started at the page background colour, so in the dark theme low-value cells blended into the page. The scale now starts from a visible tint in both themes, and non-empty cells get a thin outline. Low-sales hours are visible in the dark theme.",
+   "tags": [
+    "heatmap",
+    "dark-theme",
+    "color-scale"
+   ],
+   "created_at": "2026-01-22",
+   "status": "resolved"
+  },
+  {
+   "key": "render-072",
+   "family_id": "render-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Chart lines disappear in high-contrast mode",
+   "description": "A staff member with low vision uses Windows high-contrast mode; every chart line and bar disappears, leaving only the axes.",
+   "resolution_notes": "In forced-colours mode the browser overrode our series stroke and fill colours to the background colour. Added forced-colours styles so series use system highlight colours plus distinct patterns. Charts are visible in high-contrast mode, which the staff member confirmed.",
+   "tags": [
+    "high-contrast",
+    "accessibility",
+    "forced-colors"
+   ],
+   "created_at": "2026-05-21",
+   "status": "resolved"
+  },
+  {
+   "key": "render-073",
+   "family_id": "render-f14",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Active filter chips look empty in dark theme",
+   "description": "In the dark theme, active filter chips across the top of the dashboard look like empty pills; the text only shows when highlighted with the mouse.",
+   "resolution_notes": "The chip's selected state used white text, and the dark theme had changed the selected background to white as well. Switched the chip colours to theme tokens. Active filters are readable in the dark theme.",
+   "tags": [
+    "dark-theme",
+    "filter-chips",
+    "contrast"
+   ],
+   "created_at": "2026-09-24",
+   "status": "resolved"
+  },
+  {
+   "key": "render-074",
+   "family_id": "render-f15",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Tooltip shows another store's figures",
+   "description": "Hovering the bar for Store 12 shows Store 21's sales in the tooltip, but only on the right-hand half of the chart.",
+   "resolution_notes": "After the chart was scrolled horizontally, the tooltip looked up bars by their original index rather than their scrolled position. Fixed the lookup to use the bar under the pointer. Tooltips now match the hovered bar across the whole chart.",
+   "tags": [
+    "tooltip",
+    "horizontal-scroll",
+    "bar-chart"
+   ],
+   "created_at": "2025-04-10",
+   "status": "resolved"
+  },
+  {
+   "key": "render-075",
+   "family_id": "render-f15",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Drill-down opens a different category than the one clicked",
+   "description": "Clicking 'Footwear' in the category chart to drill down opens the detail view for 'Accessories'.",
+   "resolution_notes": "The chart sorted categories by value for display, but the click handler used the unsorted order, so drill-downs went to whichever category had held that position before sorting. The handler now uses the clicked bar's category value. Drill-downs open the correct category.",
+   "tags": [
+    "drill-down",
+    "sort-order",
+    "click-handler"
+   ],
+   "created_at": "2025-09-25",
+   "status": "resolved"
+  },
+  {
+   "key": "render-076",
+   "family_id": "render-f15",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Tooltip appears far from the cursor after browser zoom",
+   "description": "On the trend chart, after the user zooms the browser, tooltips pop up about a centimetre away from the mouse pointer.",
+   "resolution_notes": "Tooltip position was calculated from unscaled page coordinates. Switched the calculation to the chart container's bounding box. Tooltips stay next to the pointer at every zoom level tested.",
+   "tags": [
+    "tooltip",
+    "browser-zoom",
+    "positioning"
+   ],
+   "created_at": "2025-12-30",
+   "status": "resolved"
+  },
+  {
+   "key": "render-077",
+   "family_id": "render-f15",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "No tooltips on touch-screen tills",
+   "description": "Store staff using the dashboard on touch-screen tills cannot see tooltips; tapping a point does nothing, although the same chart works with a mouse.",
+   "resolution_notes": "Tooltips were triggered only by mouse hover events. Added tap-to-show tooltips that close when the user taps elsewhere. Staff on the touch-screen tills can now see values by tapping.",
+   "tags": [
+    "tooltip",
+    "touch-screen",
+    "interaction"
+   ],
+   "created_at": "2026-06-11",
+   "status": "resolved"
+  },
+  {
+   "key": "render-078",
+   "family_id": "render-f15",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "render",
+   "subject": "Chart zoom resets on every auto-refresh",
+   "description": "Analysts zoom into a two-week window on the live sales chart, but every five minutes the auto-refresh zooms back out to the full month.",
+   "resolution_notes": "Each refresh rebuilt the chart from scratch and discarded the zoom state. The chart now keeps the user's zoom range across refreshes until they reset it. Zoom stayed fixed through an hour of refreshes in testing with the customer.",
+   "tags": [
+    "chart-zoom",
+    "auto-refresh",
+    "interaction"
+   ],
+   "created_at": "2026-11-05",
+   "status": "resolved"
+  }
+ ]
+}

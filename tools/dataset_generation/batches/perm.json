@@ -1,0 +1,654 @@
+{
+  "category": "perm",
+  "issue_families": [
+    {"family_id": "perm-f01", "name": "Default roles and onboarding access", "summary": "New or invited users end up with the wrong level of access because team join rules, domain auto-join defaults, import column mapping, the inviting workspace, default-role contents or 'All members' shares override the intended role.", "boundary_note": "Concerns what new users can access once signed in, not their ability to sign in (auth) or seat charges (billing)."},
+    {"family_id": "perm-f02", "name": "Offboarding, transfers and deprovisioning", "summary": "Access that survives deactivation, deprovisioning or internal moves (public links from departed users, leftover folder grants, SCIM deactivation ignored, direct grants after a region change) or content hidden when its owner is removed.", "boundary_note": "Revoking or moving access rights is perm; invalidating sign-in sessions alone would be auth."},
+    {"family_id": "perm-f03", "name": "Identity provider group and role mapping", "summary": "Group-to-role mappings that stop matching or resolve to the wrong role because of case-sensitive names, nested groups, precedence rules or enforcement on every sign-in.", "boundary_note": "Users sign in successfully; the defect is the role assigned from directory groups, so perm rather than auth."},
+    {"family_id": "perm-f04", "name": "Dashboard sharing", "summary": "Shares that do not give working access: datasets not shared with the dashboard, cross-team sharing policy, locked filters on a share, public links disabled by policy, shares expanded to individuals, or shares sent to mailing-list addresses.", "boundary_note": "Sharing is an access-right feature, so perm; problems exporting shared content would be export."},
+    {"family_id": "perm-f05", "name": "Row-level data access rules", "summary": "Row-level rules that hide all data, too much data or the wrong data because user attributes are missing, team rules combine permissively, static store lists go stale or company-wide tiles are scoped per user.", "boundary_note": "Charts may look empty or totals may differ, but the cause is access scope rather than rendering or calculation, so perm rather than render or data_quality."},
+    {"family_id": "perm-f06", "name": "Custom role definitions", "summary": "Custom roles that lack newly introduced permissions, cannot be deleted, bundle legacy permissions, hit the plan's role limit, or do not cover personal spaces or role assignment as expected.", "boundary_note": "Defining what a role may do is core perm."},
+    {"family_id": "perm-f07", "name": "Folder permission inheritance", "summary": "Moving content between folders replaces explicit permissions, restricted subfolders do not block inherited editors, overlapping grants confuse admins, or moves are blocked by rights on the destination.", "boundary_note": "Inheritance of access rights is perm."},
+    {"family_id": "perm-f08", "name": "Permission propagation and caching", "summary": "Role or membership changes that apply only after minutes, hours or a new session; cached denial pages; nightly-only directory pulls; and access reports built from stale snapshots.", "boundary_note": "The access rules are right but applied or displayed late; the outcome is still who can access what, so perm."},
+    {"family_id": "perm-f09", "name": "Missing or over-broad permission checks", "summary": "Actions that bypass or misapply the intended check: duplicating restricted dashboards, shortcuts calling unprotected endpoints, search exposing restricted titles, creators locked out of their own content, or grants surviving group deletion.", "boundary_note": "These are authorization defects inside the product, so perm rather than auth (identity) or api (public API)."},
+    {"family_id": "perm-f10", "name": "Content ownership and transfer", "summary": "Ownership transfers that leave datasets behind, cannot target the intended user, include private drafts, or leave folders with no owner able to manage sharing.", "boundary_note": "Ownership determines who can manage and reach content, so perm; scheduled report side effects would be export."},
+    {"family_id": "perm-f11", "name": "Administrative and delegated admin roles", "summary": "Last-admin protection, recovery when no admin remains, delegated user managers able to grant too much, audit log access held in a separate role, dual approval for privileged changes, and finance users needing a narrow billing role.", "boundary_note": "These concern who holds administrative rights, so perm; plan or invoice disputes would be billing."},
+    {"family_id": "perm-f12", "name": "Guest and external partner access", "summary": "Guest access expiring by default, guest domain allow-lists, guests seeing too much of the member directory, drill-through targets not shared with guests, and guests converted to members keeping guest restrictions.", "boundary_note": "Guest allow-lists are access policies, not network allow-lists, so perm rather than connectivity."},
+    {"family_id": "perm-f13", "name": "Access requests and approvals", "summary": "Access requests that go unanswered, cannot be made, grant more than was asked for, notify too many people, or are auto-approved by an over-broad rule.", "boundary_note": "The request and approval workflow decides who gets access, so perm."}
+  ],
+  "related_groups": [
+    {"group_id": "perm-g01", "family_id": "perm-f03", "shared_root_cause": "The group-to-role mapping compared directory group names case-sensitively, so a change in capitalisation stopped the mapping from matching and users fell back to the default role."},
+    {"group_id": "perm-g02", "family_id": "perm-f05", "shared_root_cause": "The row-level rule filters by the user's store_id attribute, which SSO just-in-time provisioning did not populate, so affected users saw no rows."},
+    {"group_id": "perm-g03", "family_id": "perm-f08", "shared_root_cause": "Permissions were evaluated once per session and cached, so role and membership changes applied only after a new session or cache expiry."},
+    {"group_id": "perm-g04", "family_id": "perm-f07", "shared_root_cause": "Moving content into a folder replaced its explicit dashboard-level permissions with the destination folder's inherited permissions."},
+    {"group_id": "perm-g05", "family_id": "perm-f02", "shared_root_cause": "Public share links were not tied to their creator's status, so links created by deactivated or deprovisioned users stayed active."},
+    {"group_id": "perm-g06", "family_id": "perm-f12", "shared_root_cause": "Guest invitations defaulted to a 30-day expiry that inviters did not change, so guest access ended unexpectedly."},
+    {"group_id": "perm-g07", "family_id": "perm-f13", "shared_root_cause": "Access requests were routed only to the dashboard owner, whose account had been deactivated, so requests went unseen."},
+    {"group_id": "perm-g08", "family_id": "perm-f10", "shared_root_cause": "The ownership transfer tool moved dashboards but not the private datasets they were built on, which stayed with the deactivated previous owner."}
+  ],
+  "tickets": [
+    {
+      "key": "perm-001", "family_id": "perm-f01", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Invited analysts land as viewers although invite said Editor",
+      "description": "The admin invited four analysts with the Editor role, but once they accepted they could only view dashboards.",
+      "resolution_notes": "Joining the Analytics team applied that team's join rule, which sets members to Viewer and overrode the role chosen on the invitation. Set the four users to Editor and changed the team's join rule to 'keep invitation role'. Confirmed the analysts could edit and a test invitation kept its Editor role.",
+      "tags": ["invitation-role", "team-join-rule", "onboarding"], "created_at": "2025-01-17", "status": "resolved"
+    },
+    {
+      "key": "perm-002", "family_id": "perm-f01", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "perm",
+      "subject": "New store manager only sees the training sandbox",
+      "description": "A store manager invited by the regional lead logs in fine but sees only a handful of demo dashboards from the training sandbox.",
+      "resolution_notes": "The invitation had been sent from the sandbox workspace the regional lead happened to have open, so the user joined only that workspace. Added the user to the production workspace with the Store Manager role and, at the lead's request, removed the sandbox membership. Confirmed the manager saw the production store dashboards.",
+      "tags": ["invitation", "wrong-workspace", "onboarding"], "created_at": "2025-05-20", "status": "resolved"
+    },
+    {
+      "key": "perm-003", "family_id": "perm-f01", "related_group": null, "challenge": null, "classification_rationale": "A CSV upload is used, but it provisions user access rather than ingesting data, so perm rather than sync.",
+      "category": "perm",
+      "subject": "85 bulk-imported users have no team membership",
+      "description": "After uploading 85 users through the CSV user import, none of them appear in any team and they cannot open team dashboards.",
+      "resolution_notes": "The import file's team column was headed 'Team Name' instead of 'team', so the importer ignored it. Re-ran the import in update mode with the corrected header. Confirmed all 85 users were placed in their teams and could open team dashboards.",
+      "tags": ["user-import", "team-membership", "bulk-provisioning"], "created_at": "2025-09-12", "status": "resolved"
+    },
+    {
+      "key": "perm-004", "family_id": "perm-f01", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Newly invited store staff can open the labour-cost dashboard",
+      "description": "The admin discovered that store staff invited this month can open the labour-cost dashboard, which should be limited to regional leads.",
+      "resolution_notes": "The dashboard was shared with the 'All members' group, which every new user joins automatically. Replaced that share with the Regional Leads team. Confirmed a newly invited test user could no longer see the dashboard while regional leads still could.",
+      "tags": ["all-members-group", "over-sharing", "onboarding"], "created_at": "2026-02-06", "status": "resolved"
+    },
+    {
+      "key": "perm-005", "family_id": "perm-f01", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Self-signups from company domain get Editor rights",
+      "description": "People from the customer's email domain who join on their own through domain auto-join are getting Editor rights instead of view-only access.",
+      "resolution_notes": "Domain auto-join had been configured with Editor as its default role during the initial rollout. Changed the auto-join default to Viewer and reviewed the 23 auto-joined users with the admin, who moved 19 of them to Viewer. Confirmed the next auto-joined user received Viewer.",
+      "tags": ["domain-auto-join", "default-role", "self-signup"], "created_at": "2026-06-25", "status": "resolved"
+    },
+    {
+      "key": "perm-006", "family_id": "perm-f01", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": "The charts are empty because the role lacks data-source permission, not because of a rendering fault, so perm rather than render.",
+      "category": "perm",
+      "subject": "New users see dashboards but every widget says 'No access to data source'",
+      "description": "Users invited since last month can open dashboards, but every widget shows 'No access to data source' instead of a chart.",
+      "resolution_notes": "The workspace default role was a custom role cloned before dataset permissions existed, so it lacked 'Use dataset'. With the admin, added 'Use dataset' for the retail datasets only to that role. Confirmed new users saw the charts.",
+      "tags": ["default-role", "dataset-permission", "custom-role"], "created_at": "2025-11-04", "status": "resolved"
+    },
+    {
+      "key": "perm-007", "family_id": "perm-f02", "related_group": "perm-g05", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Departed manager's public dashboard link still opens",
+      "description": "A security review found that a public link to the margin dashboard, created by a manager who left last month, still opens without sign-in.",
+      "resolution_notes": "Deactivating a user did not revoke the public links they had created. Revoked the link at the admin's request and gave the admin a list of six other active links created by deactivated users, which they also revoked; the deactivation flow was later changed to disable a departing user's public links. Confirmed the margin dashboard link returns 'Link disabled'.",
+      "tags": ["public-link", "offboarding", "deactivated-user"], "created_at": "2025-03-26", "status": "resolved"
+    },
+    {
+      "key": "perm-008", "family_id": "perm-f02", "related_group": "perm-g05", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Supplier portal embed survived contractor deprovisioning",
+      "description": "The admin expected a dashboard embedded in the supplier portal to stop working once the contractor who set it up was deprovisioned, but it still shows live data.",
+      "resolution_notes": "The share link stayed active after its creator was deprovisioned, because links were not tied to the creator's status. The supply chain team still needed the embed, so the link was re-issued under that team's owner and the contractor's link was revoked. Confirmed the old URL returns 'Link disabled' and the new one loads.",
+      "tags": ["share-link", "deprovisioning", "embedded-dashboard"], "created_at": "2026-03-19", "status": "resolved"
+    },
+    {
+      "key": "perm-009", "family_id": "perm-f02", "related_group": null, "challenge": null, "classification_rationale": "The identity provider is involved, but the problem is provisioning of access rather than sign-in, so perm rather than auth.",
+      "category": "perm",
+      "subject": "Users removed in identity provider still active a week later",
+      "description": "People removed from the app assignment in the customer's identity provider are still listed as active members of the workspace a week later.",
+      "resolution_notes": "The identity provider sent SCIM updates setting 'active' to false, but our connector configuration ignored that attribute and handled only delete requests. Mapped the active attribute so deactivations are processed, and deactivated the nine affected users after confirming the list with the admin. Confirmed the next removal in the identity provider deactivated the user within minutes.",
+      "tags": ["scim", "deprovisioning", "identity-provider"], "created_at": "2025-07-02", "status": "resolved"
+    },
+    {
+      "key": "perm-010", "family_id": "perm-f02", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Nobody can open dashboards owned by a removed category manager",
+      "description": "After the admin removed a departed category manager, the team found that none of the dashboards she had built can be opened by anyone.",
+      "resolution_notes": "Private dashboards owned by a removed user are hidden until they are reassigned. Used the transfer step of the removal tool to assign her 11 dashboards to the new category manager. Confirmed the team could open them again.",
+      "tags": ["offboarding", "orphaned-content", "dashboard-ownership"], "created_at": "2025-12-15", "status": "resolved"
+    },
+    {
+      "key": "perm-011", "family_id": "perm-f02", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Deactivated user still listed as Editor on 14 folders",
+      "description": "Compliance wants a clean access list, but folder sharing settings still show a deactivated user as Editor on 14 folders.",
+      "resolution_notes": "Deactivation removed workspace access but left the user's explicit folder grants in place as inactive entries. Ran the cleanup action that removes grants held by deactivated users, and the deactivation flow was extended to remove them automatically. Confirmed the folder access lists no longer show the user.",
+      "tags": ["folder-grants", "deactivated-user", "access-review"], "created_at": "2026-08-20", "status": "resolved"
+    },
+    {
+      "key": "perm-012", "family_id": "perm-f02", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Transferred store manager still sees old region",
+      "description": "A store manager who moved from the North to the South region two weeks ago can still open North region dashboards.",
+      "resolution_notes": "Besides team membership, the manager had been granted direct access to the North region folders, and the internal transfer process only changed the team. Removed the direct grants at the admin's request. Confirmed the manager now sees only South region content.",
+      "tags": ["internal-transfer", "direct-grants", "region-access"], "created_at": "2025-04-30", "status": "resolved"
+    },
+    {
+      "key": "perm-013", "family_id": "perm-f03", "related_group": "perm-g01", "challenge": null, "classification_rationale": "Sign-in worked; the problem was the role assigned from group mapping, so perm rather than auth.",
+      "category": "perm",
+      "subject": "Regional managers lost editor rights overnight",
+      "description": "A dozen regional managers who sign in through SSO were all downgraded to Viewer overnight, with no change on the customer's side that they know of.",
+      "resolution_notes": "The customer's IT team had renamed the directory group 'Regional-Managers' to 'regional-managers', and our group-to-role mapping compared names case-sensitively, so it stopped matching and users fell back to the default role. Updated the mapping to the new name. Confirmed the managers had Editor again on their next sign-in.",
+      "tags": ["group-mapping", "sso-groups", "case-sensitivity"], "created_at": "2025-02-20", "status": "resolved"
+    },
+    {
+      "key": "perm-014", "family_id": "perm-f03", "related_group": "perm-g01", "challenge": "workaround_vs_permanent_fix", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Sync log: 'No matching role mapping for group FINANCE-ANALYSTS'",
+      "description": "The provisioning log shows 'No matching role mapping for group FINANCE-ANALYSTS', and finance users are getting the default Viewer role.",
+      "resolution_notes": "The mapping had been created as 'Finance-Analysts', and group matching was case-sensitive. Re-entered the mapping with the exact casing as an immediate fix; making the comparison case-insensitive was scheduled for the next release. Confirmed finance users received the Analyst role after the next sync.",
+      "tags": ["group-mapping", "scim-sync", "case-sensitivity"], "created_at": "2025-08-07", "status": "resolved"
+    },
+    {
+      "key": "perm-015", "family_id": "perm-f03", "related_group": "perm-g01", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Buyers read-only after directory clean-up",
+      "description": "Following a tidy-up of group names in the customer's directory, merchandise buyers can still sign in, but every assortment dashboard is read-only for them.",
+      "resolution_notes": "The clean-up changed the capitalisation of the buyers' group, which broke the case-sensitive group-to-role mapping, so buyers dropped to the default role. Updated the mapping to the new group name. Confirmed buyers had Editor on assortment dashboards after signing in again.",
+      "tags": ["group-mapping", "directory-cleanup", "editor-role"], "created_at": "2025-07-10", "status": "resolved"
+    },
+    {
+      "key": "perm-016", "family_id": "perm-f03", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Members of a nested group don't get the Store Ops role",
+      "description": "Users who belong to a sub-group of 'Store Ops' in the directory get the default role, while direct members of Store Ops get the right one.",
+      "resolution_notes": "Our provisioning integration receives direct group memberships only and does not expand nested groups. Added the sub-group to the role mapping directly. Confirmed its members received the Store Ops role after the next sync.",
+      "tags": ["nested-groups", "group-mapping", "scim"], "created_at": "2025-10-23", "status": "resolved"
+    },
+    {
+      "key": "perm-017", "family_id": "perm-f03", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Users in two mapped groups end up with the lower role",
+      "description": "Category managers belong to both the Buyers group, mapped to Editor, and All Staff, mapped to Viewer, and keep ending up as Viewers.",
+      "resolution_notes": "Mapping precedence was set to 'last processed group wins' rather than 'highest role wins'. Switched the precedence setting. Confirmed category managers resolved to Editor and staff-only users stayed Viewer.",
+      "tags": ["group-mapping", "role-precedence"], "created_at": "2026-05-14", "status": "resolved"
+    },
+    {
+      "key": "perm-018", "family_id": "perm-f03", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "The reset happens at login, but the issue is role assignment rather than authentication, so perm rather than auth.",
+      "category": "perm",
+      "subject": "Manually promoted SSO users revert to Viewer at every login",
+      "description": "The admin promoted several SSO users to Editor by hand, but each time they log in their role resets to Viewer.",
+      "resolution_notes": "Role mapping from the identity provider was set to 'enforce on every sign-in', which overwrites manual role changes. The admin chose to manage roles through groups and created an Editors group mapping. Confirmed the users kept Editor across sign-ins.",
+      "tags": ["role-enforcement", "group-mapping", "sso-provisioning"], "created_at": "2026-09-24", "status": "resolved"
+    },
+    {
+      "key": "perm-019", "family_id": "perm-f04", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Shared dashboard opens but widgets lack data source access",
+      "description": "A dashboard shared with the marketing team opens for them, but every widget says they do not have access to the 'Online Orders' data source.",
+      "resolution_notes": "Sharing a dashboard does not grant access to the datasets behind it, and the marketing team had no use permission on Online Orders. With the data owner's approval, granted the team use permission on that dataset only. Confirmed the widgets loaded for a marketing user.",
+      "tags": ["dashboard-sharing", "dataset-permission", "data-source-access"], "created_at": "2025-06-12", "status": "resolved"
+    },
+    {
+      "key": "perm-020", "family_id": "perm-f04", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "'Sharing outside your team is restricted' for editors",
+      "description": "Editors get 'Sharing outside your team is restricted' when they try to share a dashboard with another department.",
+      "resolution_notes": "The workspace sharing policy limits editors to sharing within their own team, with cross-team sharing reserved for admins. Instead of loosening the policy, the admin added both departments to a shared Commercial team. Confirmed editors could share the dashboard with that team.",
+      "tags": ["sharing-policy", "cross-team-sharing"], "created_at": "2026-04-16", "status": "resolved"
+    },
+    {
+      "key": "perm-021", "family_id": "perm-f04", "related_group": null, "challenge": null, "classification_rationale": "The greyed-out filters come from a share setting rather than a display defect, so perm rather than render.",
+      "category": "perm",
+      "subject": "Shared dashboard recipients can't change filters",
+      "description": "Recipients of a shared promotions dashboard can view it, but the filter bar is greyed out with the tooltip 'Filters locked by owner'.",
+      "resolution_notes": "The dashboard had been shared with the 'View only, locked filters' option. The owner changed the share to 'View with interactive filters'. Confirmed recipients could change the date and store filters.",
+      "tags": ["dashboard-sharing", "locked-filters"], "created_at": "2025-09-30", "status": "resolved"
+    },
+    {
+      "key": "perm-022", "family_id": "perm-f04", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "'Anyone with the link' option has disappeared",
+      "description": "An editor wants a public link for a supplier meeting, but the 'Anyone with the link' option no longer appears in the share dialog.",
+      "resolution_notes": "The admin had disabled public links workspace-wide in the security policy. The admin preferred to keep that policy, so the supplier was invited as a guest with access to that one dashboard. Confirmed the supplier could open it after signing in.",
+      "tags": ["public-link", "security-policy", "guest-access"], "created_at": "2026-07-01", "status": "resolved"
+    },
+    {
+      "key": "perm-023", "family_id": "perm-f04", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "People added to Pricing team can't see team dashboard",
+      "description": "People who joined the Pricing team this month cannot see a dashboard that was shared with the team last autumn.",
+      "resolution_notes": "At the time of sharing, the share dialog had expanded the team into its individual members, so the dashboard was shared with those people rather than with the team. Re-shared it with the team itself. Confirmed new team members could see it.",
+      "tags": ["dashboard-sharing", "team-share", "new-members"], "created_at": "2025-02-03", "status": "resolved"
+    },
+    {
+      "key": "perm-024", "family_id": "perm-f04", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Dashboard shared with a mailing-list address is inaccessible",
+      "description": "An analyst shared a dashboard with the store-managers@example.com list, and none of the managers can open it.",
+      "resolution_notes": "A mailing-list address is not a user, so the share created a pending invitation that nobody could accept. Removed the invitation and shared the dashboard with the Store Managers team instead. Confirmed managers could open it.",
+      "tags": ["dashboard-sharing", "mailing-list", "pending-invitation"], "created_at": "2026-10-08", "status": "resolved"
+    },
+    {
+      "key": "perm-025", "family_id": "perm-f05", "related_group": "perm-g02", "challenge": "same_symptom_different_cause", "classification_rationale": "Charts look blank, but the cause is the row-level access rule, so it is perm rather than render.",
+      "category": "perm",
+      "subject": "Store managers see empty charts after move to SSO",
+      "description": "Since the company moved to SSO sign-in, store managers see every chart on the Store Daily dashboard empty, while regional leads see data normally.",
+      "resolution_notes": "The row-level rule filters by the user's store_id attribute, and accounts created through SSO just-in-time provisioning had no store_id because the attribute was not mapped from the identity provider. Added the store_id claim to the attribute mapping and backfilled it for existing SSO users. Confirmed a store manager saw only their own store's data.",
+      "tags": ["row-level-security", "user-attribute", "sso-provisioning"], "created_at": "2025-03-06", "status": "resolved"
+    },
+    {
+      "key": "perm-026", "family_id": "perm-f05", "related_group": "perm-g02", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Recently onboarded managers get 'No data for your access scope'",
+      "description": "Store managers onboarded during the last month see 'No data for your access scope' on all dashboards; long-standing managers are unaffected.",
+      "resolution_notes": "The newer managers were provisioned via SSO without the store_id attribute that the row-level rule depends on. Mapped the attribute in the SSO configuration and re-synced the users. Confirmed each manager saw their own store's figures.",
+      "tags": ["row-level-security", "store-id", "onboarding"], "created_at": "2025-10-14", "status": "resolved"
+    },
+    {
+      "key": "perm-027", "family_id": "perm-f05", "related_group": "perm-g02", "challenge": "workaround_vs_permanent_fix", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Newly promoted store manager blocked from own store's data",
+      "description": "A store manager promoted last week can open the Store Daily dashboard, but the row-level rule hides even their own store.",
+      "resolution_notes": "The account had been created by SSO just-in-time provisioning, which did not populate store_id. As a workaround, set the attribute manually on the user; mapping store_id from the identity provider permanently was planned with the customer's IT team for the following week. Confirmed the manager could see their store's figures.",
+      "tags": ["row-level-security", "user-attribute", "workaround"], "created_at": "2026-06-04", "status": "resolved"
+    },
+    {
+      "key": "perm-028", "family_id": "perm-f05", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Store manager can see every store in the region",
+      "description": "A store manager reported that she can see sales for every store in the North region, not just her own.",
+      "resolution_notes": "She was also a member of the Regional Leads team for a temporary project, and that team's row-level rule allows all stores in the region; the most permissive rule applies. Removed her from Regional Leads at the admin's request. Confirmed she now sees only her own store.",
+      "tags": ["row-level-security", "over-permissive", "team-membership"], "created_at": "2025-05-07", "status": "resolved"
+    },
+    {
+      "key": "perm-029", "family_id": "perm-f05", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Franchise owners can't see stores opened this quarter",
+      "description": "Franchise owners can see their existing stores but none of the locations they opened this quarter.",
+      "resolution_notes": "The row-level rule used a static list of store IDs per franchisee that nobody had updated. Rewrote the rule to match on the franchisee_id field of each store record. Confirmed new stores appeared for their franchise owners automatically.",
+      "tags": ["row-level-security", "franchise-access", "static-rule"], "created_at": "2026-02-25", "status": "resolved"
+    },
+    {
+      "key": "perm-030", "family_id": "perm-f05", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "The figures differed because of row-level access scope, not incorrect calculations, so perm rather than data_quality.",
+      "category": "perm",
+      "subject": "Two regional leads see different company-wide totals",
+      "description": "Two regional leads viewing the same company-wide KPI tile see different totals and suspect a calculation error.",
+      "resolution_notes": "The tile queried the transaction dataset, so each lead's row-level rule limited the total to their own region. With the data owner's approval, pointed the tile at the company summary dataset that both leads are allowed to see. Confirmed both saw the same total.",
+      "tags": ["row-level-security", "kpi-tile", "summary-dataset"], "created_at": "2026-08-13", "status": "resolved"
+    },
+    {
+      "key": "perm-031", "family_id": "perm-f06", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Cloned role can't create alerts though the original can",
+      "description": "The admin cloned the Analyst role to create Senior Analyst, but users with the new role cannot create alerts, although Analysts can.",
+      "resolution_notes": "Cloning copied permissions from a cached role template that predated the 'Create alerts' permission. Added the permission to Senior Analyst, and the clone function was fixed to read the live role. Confirmed Senior Analysts could create alerts.",
+      "tags": ["custom-roles", "role-clone", "missing-permission"], "created_at": "2025-01-29", "status": "resolved"
+    },
+    {
+      "key": "perm-032", "family_id": "perm-f06", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Obsolete custom role can't be deleted: 'Role in use'",
+      "description": "The admin wants to delete an obsolete custom role but gets 'Role in use', though no active user seems to have it.",
+      "resolution_notes": "The role was still assigned to two deactivated users and referenced by one group mapping. Reassigned the deactivated users to the default role and removed the mapping with the admin's approval. Confirmed the role could then be deleted.",
+      "tags": ["custom-roles", "role-deletion", "group-mapping"], "created_at": "2025-08-21", "status": "resolved"
+    },
+    {
+      "key": "perm-033", "family_id": "perm-f06", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "'Manage schedules' role also lets users edit layouts",
+      "description": "Users with a custom role meant only for managing report schedules can also move and resize widgets.",
+      "resolution_notes": "The role had been created under the legacy permission model, where 'Manage schedules' was bundled with 'Edit dashboard'. Migrated the role to the granular model, where schedule management is separate. Confirmed the users could manage schedules but not edit layouts.",
+      "tags": ["custom-roles", "legacy-permissions", "permission-bundle"], "created_at": "2026-03-04", "status": "resolved"
+    },
+    {
+      "key": "perm-034", "family_id": "perm-f06", "related_group": null, "challenge": null, "classification_rationale": "The limit is plan-based, but the request concerns defining roles rather than charges, so perm rather than billing.",
+      "category": "perm",
+      "subject": "'Maximum of 10 custom roles reached'",
+      "description": "The admin cannot create another custom role and gets 'Maximum of 10 custom roles reached'.",
+      "resolution_notes": "The Growth plan allows 10 custom roles, and four of the existing ones were near-duplicates. Helped the admin merge the duplicates into one role and move users across. Confirmed the new role could then be created.",
+      "tags": ["custom-roles", "role-limit", "role-cleanup"], "created_at": "2025-11-20", "status": "resolved"
+    },
+    {
+      "key": "perm-035", "family_id": "perm-f06", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "'View all dashboards' role can't see personal spaces",
+      "description": "Auditors were given a custom role with 'View all dashboards', yet they cannot see dashboards in colleagues' personal spaces.",
+      "resolution_notes": "'View all dashboards' covers shared and team spaces; personal spaces are excluded by design. Rather than granting admin rights, the owners moved the dashboards the auditors needed into a team folder the auditors can view. Confirmed the auditors could open them.",
+      "tags": ["custom-roles", "personal-space", "auditor-access"], "created_at": "2026-10-29", "status": "resolved"
+    },
+    {
+      "key": "perm-036", "family_id": "perm-f06", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Delegated coordinator can invite but not set roles",
+      "description": "A custom HR coordinator role can invite users, but every invitation defaults to Viewer and the role dropdown is disabled.",
+      "resolution_notes": "Assigning roles needs the separate 'Assign roles up to' permission, which sets the highest role a delegate can grant. Added 'Assign roles up to Editor' to the coordinator role. Confirmed the coordinator could invite users as Viewer or Editor but not Admin.",
+      "tags": ["custom-roles", "delegated-administration", "role-assignment"], "created_at": "2025-06-26", "status": "resolved"
+    },
+    {
+      "key": "perm-037", "family_id": "perm-f07", "related_group": "perm-g04", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Agency analysts lost access after dashboard moved to folder",
+      "description": "After an editor moved the Promotions dashboard into the Marketing folder, the agency analysts it had been shared with could no longer open it.",
+      "resolution_notes": "Moving content into a folder replaced the dashboard's explicit permissions with the folder's inherited ones, which do not include the agency group. Restored the agency group's grant on the dashboard. Confirmed the analysts could open it again.",
+      "tags": ["folder-move", "inherited-permissions", "explicit-grants"], "created_at": "2025-04-09", "status": "resolved"
+    },
+    {
+      "key": "perm-038", "family_id": "perm-f07", "related_group": "perm-g04", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Logistics team locked out after folder reorganisation",
+      "description": "Following a weekend folder reorganisation, the logistics team can no longer see four dashboards they use every day.",
+      "resolution_notes": "The reorganisation moved the dashboards into the Operations folder, and the move discarded their dashboard-level grants in favour of the folder's permissions, which do not include logistics. Re-granted the logistics team view access on the four dashboards. Confirmed the team could see them.",
+      "tags": ["folder-reorganisation", "inherited-permissions", "lost-access"], "created_at": "2025-12-04", "status": "resolved"
+    },
+    {
+      "key": "perm-039", "family_id": "perm-f07", "related_group": "perm-g04", "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Confidential pricing dashboard visible to all staff after move",
+      "description": "A confidential pricing dashboard became visible to all staff after an editor moved it into the shared Company folder.",
+      "resolution_notes": "Moving it replaced its restricted explicit permissions with the folder's inherited 'All members: View'. Moved the dashboard into a restricted subfolder for the pricing team, and the move dialog now warns when permissions will change. Confirmed only the pricing team could open it.",
+      "tags": ["folder-move", "over-sharing", "inherited-permissions"], "created_at": "2026-05-21", "status": "resolved"
+    },
+    {
+      "key": "perm-040", "family_id": "perm-f07", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Parent folder editors can open a 'Restricted' subfolder",
+      "description": "Editors of the parent Finance folder can still open a subfolder marked Restricted.",
+      "resolution_notes": "The subfolder used 'Restrict viewers', which does not affect inherited editor grants. Changed it to 'Break inheritance' with explicit grants for the controllers group only. Confirmed parent folder editors were blocked and controllers could still open it.",
+      "tags": ["restricted-subfolder", "inheritance", "folder-permissions"], "created_at": "2025-07-24", "status": "resolved"
+    },
+    {
+      "key": "perm-041", "family_id": "perm-f07", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "User listed twice on folder: inherited Viewer and explicit Editor",
+      "description": "A user appears twice in a folder's access list, as Viewer through inheritance and as Editor through a direct grant, and the admin asks which one applies.",
+      "resolution_notes": "The most permissive grant applies, so the user had Editor. The admin intended Viewer, so the explicit Editor grant was removed. Confirmed the user could view but not edit.",
+      "tags": ["folder-permissions", "conflicting-grants", "access-review"], "created_at": "2026-09-10", "status": "resolved"
+    },
+    {
+      "key": "perm-042", "family_id": "perm-f07", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "'Insufficient permission on destination folder' when moving dashboard",
+      "description": "An editor gets 'Insufficient permission on destination folder' when trying to move a dashboard into Regional Reports.",
+      "resolution_notes": "Moving content requires edit rights on the destination, and the editor had only view access there. The folder owner granted the editor's team the narrower Contribute permission, which allows adding content without editing others' dashboards. Confirmed the move succeeded.",
+      "tags": ["folder-move", "contribute-permission", "destination-folder"], "created_at": "2025-03-31", "status": "resolved"
+    },
+    {
+      "key": "perm-043", "family_id": "perm-f08", "related_group": "perm-g03", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Promoted buyer stays read-only until next day's login",
+      "description": "After the admin promoted a buyer to Editor, the buyer still saw read-only dashboards until signing out and back in the next morning.",
+      "resolution_notes": "Permissions were evaluated at sign-in and cached for the session, so the role change applied only to a new session. Explained the behaviour to the admin; a change refreshing permissions every 5 minutes was released later that quarter. Confirmed after the release that a test promotion applied within 5 minutes.",
+      "tags": ["permission-cache", "role-change", "session"], "created_at": "2025-02-14", "status": "resolved"
+    },
+    {
+      "key": "perm-044", "family_id": "perm-f08", "related_group": "perm-g03", "challenge": "workaround_vs_permanent_fix", "classification_rationale": "Sessions are only the mechanism; the question is when a revoked folder permission takes effect, so perm rather than auth.",
+      "category": "perm",
+      "subject": "Removed folder access still works for about an hour",
+      "description": "The customer's security team removed a user from a sensitive folder as a test, and the user could still open it for roughly an hour.",
+      "resolution_notes": "Folder permissions were cached per session with a 60-minute lifetime. As an immediate measure, ended the user's active sessions, which forces permissions to be re-evaluated; a shorter refresh interval was scheduled as the permanent fix. Confirmed the user lost access as soon as their sessions ended.",
+      "tags": ["permission-cache", "access-revocation", "sessions"], "created_at": "2025-01-22", "status": "resolved"
+    },
+    {
+      "key": "perm-045", "family_id": "perm-f08", "related_group": "perm-g03", "challenge": "related_symptom_different_product", "classification_rationale": null,
+      "category": "perm",
+      "subject": "New team member sees dashboards in mobile app but not in browser",
+      "description": "A store manager added to the Store Ops team can see the team's dashboards in the mobile app, but the desktop browser still shows an empty list.",
+      "resolution_notes": "The browser session had started before the team membership was added and was still using cached permissions, while the mobile app had signed in afresh. Ending the browser session refreshed permissions, and the 5-minute refresh released shortly afterwards removed the need for this. Confirmed the dashboards appeared in the browser.",
+      "tags": ["permission-cache", "mobile-app", "team-membership"], "created_at": "2025-03-12", "status": "resolved"
+    },
+    {
+      "key": "perm-046", "family_id": "perm-f08", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Directory group changes take a day to apply",
+      "description": "Users added to a group in the customer's identity provider only get the matching role the following day.",
+      "resolution_notes": "Push provisioning had never been enabled, so the integration relied on a nightly pull of group memberships. Enabled SCIM push provisioning with the customer's IT team. Confirmed a membership change applied within two minutes.",
+      "tags": ["scim", "provisioning-delay", "group-sync"], "created_at": "2025-09-18", "status": "resolved"
+    },
+    {
+      "key": "perm-047", "family_id": "perm-f08", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Still seeing 'Request access' after owner approved",
+      "description": "Minutes after the owner approved an access request, the requester still gets the 'Request access' page when opening the dashboard.",
+      "resolution_notes": "The requester's browser had cached the access-denied page. A hard refresh loaded the dashboard, and the page's cache headers were corrected so denial pages are not cached. Confirmed a new approval took effect without a manual refresh.",
+      "tags": ["access-request", "browser-cache", "approval"], "created_at": "2026-04-30", "status": "resolved"
+    },
+    {
+      "key": "perm-048", "family_id": "perm-f08", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": null,
+      "category": "perm",
+      "subject": "'Who has access' report lists users removed yesterday",
+      "description": "The 'Who has access' report for the Finance folder still lists three users the admin removed the previous day.",
+      "resolution_notes": "That report is built from a nightly snapshot, while the live access list was already correct. Showed the admin the live Access tab, and the report now shows when its snapshot was taken. Confirmed the three users were absent from the live list and from the next snapshot.",
+      "tags": ["access-report", "snapshot", "access-review"], "created_at": "2026-11-12", "status": "resolved"
+    },
+    {
+      "key": "perm-049", "family_id": "perm-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Viewer duplicated a restricted dashboard and edited the copy",
+      "description": "A viewer duplicated a restricted dashboard into their personal space and was then able to edit and share the copy.",
+      "resolution_notes": "The duplicate action checked only view permission. Added a check requiring the Duplicate permission, held by Editor and above, and removed the copy with the admin's approval. Confirmed viewers no longer see the Duplicate option.",
+      "tags": ["permission-check", "dashboard-duplicate", "viewer-role"], "created_at": "2025-08-13", "status": "resolved"
+    },
+    {
+      "key": "perm-050", "family_id": "perm-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Editors adding groups to dashboard share lists",
+      "description": "The customer expected only owners to change sharing, but editors have been adding new groups to dashboards' share lists.",
+      "resolution_notes": "The workspace setting 'Editors can manage sharing' was on, the default for workspaces created before last year. Turned it off at the admin's request. Confirmed editors could still edit content but the share dialog was read-only for them.",
+      "tags": ["sharing-settings", "editor-role", "workspace-default"], "created_at": "2026-01-07", "status": "resolved"
+    },
+    {
+      "key": "perm-051", "family_id": "perm-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Viewer renamed widgets with a keyboard shortcut",
+      "description": "A viewer found that pressing F2 on a widget title let them rename it, and the new title was saved for everyone.",
+      "resolution_notes": "The context menu was hidden for viewers, but the inline-rename shortcut called an endpoint that had no server-side permission check. Added the check and reverted the renamed titles from the audit log. Confirmed the shortcut now returns 'Forbidden' for viewers.",
+      "tags": ["permission-check", "inline-rename", "viewer-role"], "created_at": "2025-05-28", "status": "resolved"
+    },
+    {
+      "key": "perm-052", "family_id": "perm-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Search shows titles of dashboards in private HR folder",
+      "description": "Global search returned titles and thumbnails of dashboards in a private HR folder to users outside the HR team.",
+      "resolution_notes": "The search index did not apply folder permissions to titles and thumbnails. Search results are now filtered by the user's permissions, and the cached thumbnails were purged. Confirmed a non-HR user's search returned no HR content.",
+      "tags": ["search", "permission-filtering", "private-folder"], "created_at": "2026-06-11", "status": "resolved"
+    },
+    {
+      "key": "perm-053", "family_id": "perm-f09", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Editor can't edit the dashboard she created yesterday",
+      "description": "An editor gets 'You don't have permission to edit this dashboard' on a dashboard she created the day before.",
+      "resolution_notes": "She had created it in a folder where her team has Contribute rights, and that folder was set so creators keep only view access after creation. With the folder owner's agreement, enabled 'Creator keeps edit rights'. Confirmed she could edit her dashboard.",
+      "tags": ["creator-rights", "contribute-permission", "folder-settings"], "created_at": "2025-11-13", "status": "resolved"
+    },
+    {
+      "key": "perm-054", "family_id": "perm-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Members of a deleted group still have access",
+      "description": "Users from a group that was deleted last month can still open dashboards that had been shared with that group.",
+      "resolution_notes": "Deleting the group removed it from the interface but left the share grants pointing to the orphaned group identifier, with memberships still resolved from cache. Removed the orphaned grants, and group deletion now removes its grants. Confirmed the former members lost access.",
+      "tags": ["deleted-group", "orphaned-grants", "access-revocation"], "created_at": "2026-03-26", "status": "resolved"
+    },
+    {
+      "key": "perm-055", "family_id": "perm-f10", "related_group": "perm-g08", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Charts break for new owner after dashboard transfer",
+      "description": "After transferring a departed analyst's dashboards to her replacement, every chart shows 'Data source unavailable' for the new owner.",
+      "resolution_notes": "The ownership transfer tool moved the dashboards but not the six private datasets they were built on, which stayed with the deactivated account. Transferred the datasets to the new owner with the admin's approval. Confirmed the charts loaded.",
+      "tags": ["ownership-transfer", "private-dataset", "handover"], "created_at": "2025-04-24", "status": "resolved"
+    },
+    {
+      "key": "perm-056", "family_id": "perm-f10", "related_group": "perm-g08", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Inherited dashboards' calculated fields are read-only",
+      "description": "A category analyst who inherited a colleague's dashboards can edit the layouts but gets 'Read-only dataset' when changing calculated fields.",
+      "resolution_notes": "The handover moved only the dashboards; the underlying datasets were still owned by the previous analyst's deactivated account. Transferred dataset ownership with the admin's approval. Confirmed the analyst could edit the calculated fields.",
+      "tags": ["ownership-transfer", "calculated-fields", "dataset-ownership"], "created_at": "2026-07-08", "status": "resolved"
+    },
+    {
+      "key": "perm-057", "family_id": "perm-f10", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Store manager missing from ownership transfer list",
+      "description": "The admin wants to transfer a dashboard to a store manager, but the manager does not appear in the transfer list.",
+      "resolution_notes": "Ownership can only go to users with Editor or above, and the manager is a Viewer. Rather than upgrade the manager's role, the admin transferred ownership to the regional lead, an Editor, and shared view access with the manager. Confirmed the transfer and the share were in place.",
+      "tags": ["ownership-transfer", "eligible-owner", "least-privilege"], "created_at": "2025-10-30", "status": "resolved"
+    },
+    {
+      "key": "perm-058", "family_id": "perm-f10", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Folder owner left; editors can't change who has access",
+      "description": "The only owner of a shared folder has left the company, and the remaining editors cannot change its access list.",
+      "resolution_notes": "Managing a folder's sharing is limited to its owners and workspace admins. A workspace admin assigned one of the remaining editors as the new owner. Confirmed the new owner could manage the folder's access.",
+      "tags": ["folder-ownership", "orphaned-folder", "sharing-management"], "created_at": "2026-02-18", "status": "resolved"
+    },
+    {
+      "key": "perm-059", "family_id": "perm-f10", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Ownership transfer handed over personal drafts too",
+      "description": "After an ownership transfer, the new owner found the departed user's personal draft dashboards, including salary planning notes, in their own space.",
+      "resolution_notes": "The transfer tool included personal-space drafts by default. With the admin, moved the drafts to an admin-only archive folder, and the transfer dialog now excludes personal drafts unless they are selected. Confirmed the new owner no longer had access to them.",
+      "tags": ["ownership-transfer", "personal-drafts", "over-sharing"], "created_at": "2025-08-28", "status": "resolved"
+    },
+    {
+      "key": "perm-060", "family_id": "perm-f10", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Wants dashboards owned by a team instead of individuals",
+      "description": "After a third painful handover this year, the BI lead wants core dashboards owned by the BI team rather than by any one person.",
+      "resolution_notes": "Team ownership was available on their plan but had not been enabled. Enabled it and converted the 40 core dashboards to BI team ownership. Confirmed any BI team member could manage them and that removing one member would not orphan them.",
+      "tags": ["team-ownership", "dashboard-ownership", "handover"], "created_at": "2026-11-05", "status": "resolved"
+    },
+    {
+      "key": "perm-061", "family_id": "perm-f11", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Outgoing admin can't demote themselves",
+      "description": "The outgoing admin tries to change their own role to Editor and gets 'Workspace must have at least one admin'.",
+      "resolution_notes": "They were the only admin, and the last-admin protection blocked the change. At the customer's request they first promoted their designated successor to Admin and then changed their own role. Confirmed the successor was the workspace's admin.",
+      "tags": ["admin-role", "last-admin-protection", "handover"], "created_at": "2025-01-10", "status": "resolved"
+    },
+    {
+      "key": "perm-062", "family_id": "perm-f11", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "No admin left after sole admin was deprovisioned",
+      "description": "The customer's only admin left and was deprovisioned by IT through SCIM, so nobody can manage users or settings.",
+      "resolution_notes": "Verified the request with the account's billing owner and the contract signatory, then assigned Admin to the nominated IT lead. Recommended keeping at least two admins, and the customer added a second one. Confirmed both admins could open user management.",
+      "tags": ["admin-recovery", "no-admin", "deprovisioning"], "created_at": "2025-07-16", "status": "resolved"
+    },
+    {
+      "key": "perm-063", "family_id": "perm-f11", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "User Manager role promoted someone to Admin",
+      "description": "A user with the User Manager role promoted a colleague to Admin, which the customer never intended that role to allow.",
+      "resolution_notes": "The User Manager role came from a legacy template with 'Assign roles up to Admin'. Changed it to 'Assign roles up to Editor' and, at the admin's request, reverted the promotion. Confirmed User Managers can no longer grant Admin.",
+      "tags": ["delegated-administration", "privilege-escalation", "role-assignment"], "created_at": "2026-04-09", "status": "resolved"
+    },
+    {
+      "key": "perm-064", "family_id": "perm-f11", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Admin gets 'Audit log requires Security Admin'",
+      "description": "A workspace admin trying to open the audit log is shown 'Audit log requires Security Admin'.",
+      "resolution_notes": "On Business plans, audit log access is a separate Security Admin permission. The account owner requested it for this admin under their security policy, and it was granted. Confirmed the admin could open the audit log.",
+      "tags": ["audit-log", "security-admin", "admin-role"], "created_at": "2025-12-11", "status": "resolved"
+    },
+    {
+      "key": "perm-065", "family_id": "perm-f11", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Role change stuck on 'Pending approval' for days",
+      "description": "An admin promoted a user to Admin, and the change has shown 'Pending approval' for four days.",
+      "resolution_notes": "Dual approval for privileged role changes was enabled, and the second approver had notifications turned off. Showed the approver the pending approvals queue, and they approved the change. Confirmed the user became Admin and the approver re-enabled notifications.",
+      "tags": ["dual-approval", "privileged-roles", "pending-approval"], "created_at": "2026-08-06", "status": "resolved"
+    },
+    {
+      "key": "perm-066", "family_id": "perm-f11", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "It mentions invoices, but the request is about which role grants access, so perm rather than billing.",
+      "category": "perm",
+      "subject": "Finance assistant needs invoices but not admin rights",
+      "description": "The finance assistant needs to download invoices, and the customer's admin asks whether she must be made an admin.",
+      "resolution_notes": "Granted the narrower Billing Viewer role, which allows viewing and downloading invoices without workspace admin rights. Confirmed she could download invoices and could not open user management.",
+      "tags": ["billing-viewer-role", "least-privilege", "invoice-access"], "created_at": "2025-05-15", "status": "resolved"
+    },
+    {
+      "key": "perm-067", "family_id": "perm-f12", "related_group": "perm-g06", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Agency guests told 'Your guest access has ended'",
+      "description": "Contacts at the customer's marketing agency suddenly get 'Your guest access has ended' on dashboards they have used for weeks.",
+      "resolution_notes": "Guest invitations default to a 30-day expiry, and the inviter had not changed it. Extended the guests' access to the contract end date set by the admin. Confirmed the agency contacts could open the dashboards again.",
+      "tags": ["guest-access", "access-expiry", "agency"], "created_at": "2025-04-03", "status": "resolved"
+    },
+    {
+      "key": "perm-068", "family_id": "perm-f12", "related_group": "perm-g06", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Supplier reps land on 'Access expired' mid-quarter",
+      "description": "Supplier representatives can still sign in but land on an 'Access expired' notice instead of the shared sell-through dashboard.",
+      "resolution_notes": "Their guest access had been created with the default 30-day expiry. Set an expiry matching the supplier agreement, the end of the quarter, and turned on a 7-day reminder to the inviter before expiry. Confirmed the representatives could open the dashboard.",
+      "tags": ["guest-access", "guest-expiry", "supplier-access"], "created_at": "2026-01-22", "status": "resolved"
+    },
+    {
+      "key": "perm-069", "family_id": "perm-f12", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "This allow-list is an access policy for guests, not a network allow-list, so perm rather than connectivity.",
+      "category": "perm",
+      "subject": "Guest invite blocked: 'Domain not allowed'",
+      "description": "An editor cannot invite a consultant from consultancy.example.net; the invite dialog says 'Domain not allowed'.",
+      "resolution_notes": "The workspace's guest domain allow-list was limited to two partner domains. After a review, the admin added the consultancy's domain. Confirmed the invitation was sent and accepted.",
+      "tags": ["guest-domain-allowlist", "guest-invite", "external-access"], "created_at": "2025-11-27", "status": "resolved"
+    },
+    {
+      "key": "perm-070", "family_id": "perm-f12", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Guest can browse the full member directory",
+      "description": "A guest noticed they could browse the list of all workspace members along with their email addresses.",
+      "resolution_notes": "The directory setting 'Guests can see members' was turned on. Turned it off at the admin's request, so guests now see only the people on dashboards shared with them. Confirmed the guest's directory view was limited accordingly.",
+      "tags": ["guest-access", "member-directory", "privacy"], "created_at": "2026-05-27", "status": "resolved"
+    },
+    {
+      "key": "perm-071", "family_id": "perm-f12", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Distributor guest denied on drill-through dashboard",
+      "description": "A distributor guest can open the summary dashboard, but clicking through to the detail dashboard gives 'Access denied'.",
+      "resolution_notes": "Drill-through targets need their own access, and the detail dashboard had not been shared with the guest. The owner shared it, with the existing row-level rule limiting the guest to the distributor's own products. Confirmed the drill-through worked and showed only that distributor's products.",
+      "tags": ["guest-access", "drill-through", "row-level-security"], "created_at": "2025-09-03", "status": "resolved"
+    },
+    {
+      "key": "perm-072", "family_id": "perm-f12", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Contractor hired as staff still can't create dashboards",
+      "description": "A former contractor who joined as staff was converted from guest to member but still cannot create dashboards.",
+      "resolution_notes": "Converting the account changed its type but kept the guest's view-only role. Assigned the Editor role requested by the user's manager. Confirmed they could create dashboards.",
+      "tags": ["guest-conversion", "member-role", "role-assignment"], "created_at": "2026-10-15", "status": "resolved"
+    },
+    {
+      "key": "perm-073", "family_id": "perm-f13", "related_group": "perm-g07", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Access requests unanswered for three weeks",
+      "description": "Several store managers asked for access to the Regional Margins dashboard three weeks ago and have heard nothing.",
+      "resolution_notes": "Access requests were routed only to the dashboard owner, whose account had been deactivated, so the requests sat unseen. Reassigned ownership to the regional lead, who approved five requests and declined two; requests on content with a deactivated owner now fall back to the folder's owners. Confirmed a new request reached the regional lead.",
+      "tags": ["access-request", "deactivated-owner", "request-routing"], "created_at": "2025-06-04", "status": "resolved"
+    },
+    {
+      "key": "perm-074", "family_id": "perm-f13", "related_group": "perm-g07", "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "'Request sent' but nobody ever receives it",
+      "description": "Users click Request access on the supplier performance dashboard and see 'Request sent', but nobody receives anything.",
+      "resolution_notes": "Requests were addressed to the dashboard's original owner, whose account had been deactivated, and the dashboard sat at the workspace root, so there was no folder owner to fall back to. Transferred ownership to the category lead and re-sent the pending requests. Confirmed the category lead received the next request.",
+      "tags": ["access-request", "request-notification", "dashboard-owner"], "created_at": "2026-03-12", "status": "resolved"
+    },
+    {
+      "key": "perm-075", "family_id": "perm-f13", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "No way to request access, just 'Dashboard not found'",
+      "description": "Users without access to a dashboard see only 'Dashboard not found', with no option to request access.",
+      "resolution_notes": "The workspace had 'Hide restricted content' enabled, which replaces the request page with a not-found message. The admin kept it for the HR folder only and turned it off elsewhere. Confirmed users saw the Request access page on non-HR dashboards.",
+      "tags": ["access-request", "hidden-content", "workspace-policy"], "created_at": "2025-02-27", "status": "resolved"
+    },
+    {
+      "key": "perm-076", "family_id": "perm-f13", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "perm",
+      "subject": "Approved request gave edit rights instead of view",
+      "description": "A dashboard owner approved an access request and the requester ended up with edit rights, though they had only asked to view.",
+      "resolution_notes": "The approval dialog defaulted to the approver's own permission level. The owner changed the requester to Viewer, and the dialog now defaults to Viewer. Confirmed the requester could view but not edit.",
+      "tags": ["access-request", "approval-default", "over-permissive"], "created_at": "2025-10-08", "status": "resolved"
+    },
+    {
+      "key": "perm-077", "family_id": "perm-f13", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Every access request emails all 25 folder editors",
+      "description": "Each access request on the Finance folder sends an email to all 25 of its editors.",
+      "resolution_notes": "Folder requests notify everyone who can manage access, and all editors could because 'Editors can manage sharing' was on. Turned that setting off for the workspace with the admin's agreement, so only the two folder owners receive requests. Confirmed the next request notified only the owners.",
+      "tags": ["access-request", "notification-routing", "sharing-settings"], "created_at": "2026-07-29", "status": "resolved"
+    },
+    {
+      "key": "perm-078", "family_id": "perm-f13", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "perm",
+      "subject": "Auto-approval rule also approved contractors",
+      "description": "An auto-approval rule meant for store managers has also been approving access requests from contractors.",
+      "resolution_notes": "The rule matched on email domain rather than group membership, and contractors share the company domain. Changed the rule to match the Store Managers group and, with the admin's approval, revoked the four contractor grants it had created. Confirmed a contractor's new request now waits for manual review.",
+      "tags": ["auto-approval", "access-request", "contractor-access"], "created_at": "2026-09-30", "status": "resolved"
+    }
+  ]
+}

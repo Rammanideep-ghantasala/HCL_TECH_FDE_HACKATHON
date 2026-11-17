@@ -1,0 +1,1527 @@
+{
+ "category": "export",
+ "issue_families": [
+  {
+   "family_id": "export-f01",
+   "name": "Row limits and truncated exports",
+   "summary": "Exports silently capped by file-format or plan limits, per-widget export settings or export-job query time limits, so files arrive with fewer rows than the on-screen data.",
+   "boundary_note": "The problem is an incomplete export file; general slowness under load without a truncated file would be perf."
+  },
+  {
+   "family_id": "export-f02",
+   "name": "Export job processing failures",
+   "summary": "Background export jobs stuck in Preparing, failing on unsupported field types or broken widget content, ignoring cancellation, missing completion notifications or failing without a visible reason.",
+   "boundary_note": "The fault is in the export pipeline itself, not general platform load (perf) or how dashboards display (render)."
+  },
+  {
+   "family_id": "export-f03",
+   "name": "Scheduled report timing",
+   "summary": "Scheduled reports sent at the wrong time or day, skipped, duplicated or paused because of fixed UTC offsets across daylight saving changes, month-end rules, copied schedules or deactivated schedule owners.",
+   "boundary_note": "Scheduled report delivery is export by definition; threshold-based metric notifications would be alerts."
+  },
+  {
+   "family_id": "export-f04",
+   "name": "Report email delivery",
+   "summary": "Report emails that do not reach recipients or arrive unusable: single-use links consumed by mail security scanners, recipient domain restrictions, oversized attachments and spam filtering after a sender change.",
+   "boundary_note": "These are report delivery emails, which stay in export; password-reset emails are auth and invoice emails are billing."
+  },
+  {
+   "family_id": "export-f05",
+   "name": "CSV encoding, delimiters and escaping",
+   "summary": "CSV files that open incorrectly in spreadsheet tools or importers because of a missing byte-order mark, a character sanitiser, the delimiter choice or embedded line breaks.",
+   "boundary_note": "The data is correct in the platform; only the export file's encoding or structure is wrong, so export rather than data_quality."
+  },
+  {
+   "family_id": "export-f06",
+   "name": "Export contents differ from the on-screen view",
+   "summary": "Exports that ignore session filters, include hidden columns, use a different sort or omit totals, so the file does not match what the user saw.",
+   "boundary_note": "The dashboard shows the right data; the mismatch is introduced by the export, so export rather than render or data_quality."
+  },
+  {
+   "family_id": "export-f07",
+   "name": "Dates, times and number formats in exported files",
+   "summary": "Timestamps written without offsets, end-exclusive date ranges, locale number formats ignored, currency codes missing, leading zeros stripped or percentages written as fractions in exported files.",
+   "boundary_note": "Values are correct after ingestion; only their representation in the file differs, so export rather than data_quality or workspace_admin."
+  },
+  {
+   "family_id": "export-f08",
+   "name": "PDF export layout and rendering",
+   "summary": "PDF exports with missing or still-loading charts, cut-off wide tables, missing glyphs or display-theme colours unsuitable for print.",
+   "boundary_note": "Dashboards display correctly on screen; only the generated PDF is wrong, so export rather than render."
+  },
+  {
+   "family_id": "export-f09",
+   "name": "Excel workbook specifics",
+   "summary": "XLSX files with dates or numbers stored as text, invalid sheet names, repair prompts, merged header rows or lost cell styling.",
+   "boundary_note": "The problems are specific to the generated workbook, not to the underlying data or the on-screen display."
+  },
+  {
+   "family_id": "export-f10",
+   "name": "Export restrictions, masking and export policies",
+   "summary": "Export menus missing or unexpectedly available, personal data masked or blanked in files, watermarks missing and workspace-wide export freezes, all driven by export policy settings.",
+   "boundary_note": "Export permissions as a feature setting stay in export; general role and sharing problems would be perm."
+  },
+  {
+   "family_id": "export-f11",
+   "name": "Download links and export file access",
+   "summary": "Report and Export Center download links that expire early, are single-use, require sign-in, resolve to the wrong workspace or file, or point to files no longer retained.",
+   "boundary_note": "Concerns access to generated export files, not user login (auth) or role-based access to dashboards (perm)."
+  },
+  {
+   "family_id": "export-f12",
+   "name": "Scheduled file drops to SFTP and shared storage",
+   "summary": "Recurring file deliveries to customer-managed SFTP folders or storage buckets that overwrite earlier files, are read half-written, carry the wrong date token, change format or change column layout.",
+   "boundary_note": "These are file-based scheduled exports with delivery-configuration causes, not inbound data sync or network reachability."
+  },
+  {
+   "family_id": "export-f13",
+   "name": "Widget-specific export behaviour",
+   "summary": "Exports from pivot tables, maps, charts, KPI tiles and drill-down tables that produce flattened, empty, image-only, differently rounded or partial output.",
+   "boundary_note": "The widget displays correctly; the issue is what its export produces."
+  }
+ ],
+ "related_groups": [
+  {
+   "group_id": "export-g01",
+   "family_id": "export-f03",
+   "shared_root_cause": "Older schedules stored a fixed UTC offset instead of the named time zone, so delivery times shifted by an hour when daylight saving began or ended."
+  },
+  {
+   "group_id": "export-g02",
+   "family_id": "export-f04",
+   "shared_root_cause": "Recipients' mail security systems pre-fetched links in report emails, consuming single-use download tokens before the person clicked."
+  },
+  {
+   "group_id": "export-g03",
+   "family_id": "export-f05",
+   "shared_root_cause": "CSV exports were written as UTF-8 without a byte-order mark, so desktop spreadsheet software decoded non-ASCII characters with a legacy code page."
+  },
+  {
+   "group_id": "export-g04",
+   "family_id": "export-f06",
+   "shared_root_cause": "Exports were generated from the dashboard's saved filter state, ignoring filters the user applied in the current session without saving."
+  },
+  {
+   "group_id": "export-g05",
+   "family_id": "export-f08",
+   "shared_root_cause": "The headless PDF renderer captured the dashboard before lazy-loaded or slow widgets had finished loading."
+  },
+  {
+   "group_id": "export-g06",
+   "family_id": "export-f12",
+   "shared_root_cause": "The file-drop filename template had no date or timestamp token, so each run overwrote the previous file."
+  },
+  {
+   "group_id": "export-g07",
+   "family_id": "export-f01",
+   "shared_root_cause": "Excel exports were truncated at the worksheet row limit of 1,048,576 rows without splitting the data or warning the user."
+  },
+  {
+   "group_id": "export-g08",
+   "family_id": "export-f10",
+   "shared_root_cause": "The workspace data protection policy masks or removes fields tagged as personal data in every export, including scheduled ones."
+  }
+ ],
+ "tickets": [
+  {
+   "key": "export-001",
+   "family_id": "export-f01",
+   "related_group": "export-g07",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Excel export stops at about a million rows",
+   "description": "A grocery chain exported a full year of line-item sales to Excel; the file ends abruptly at row 1,048,576 with no warning, while the on-screen count shows 1.4 million rows.",
+   "resolution_notes": "Excel worksheets are capped at 1,048,576 rows, and the exporter truncated silently instead of continuing on another sheet. As an immediate workaround we advised exporting this volume to CSV; the exporter was later changed to spill onto additional sheets and display a notice. Confirmed the CSV contained all 1.4 million rows.",
+   "tags": [
+    "excel",
+    "row-limit",
+    "truncation"
+   ],
+   "created_at": "2025-02-12",
+   "status": "resolved"
+  },
+  {
+   "key": "export-002",
+   "family_id": "export-f01",
+   "related_group": "export-g07",
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Year-end order line export missing everything after mid-November",
+   "description": "Finance noticed the XLSX export of the year's order lines stops partway through November; nothing after that point appears in the file.",
+   "resolution_notes": "The export was sorted by date ascending and exceeded the worksheet row limit, so every row past the cap was dropped without notice. Split the export into two half-year files for the immediate need, and once multi-sheet output was released, re-ran the full-year export. Confirmed it spanned two sheets and ended on 31 December.",
+   "tags": [
+    "xlsx",
+    "row-limit",
+    "missing-rows"
+   ],
+   "created_at": "2025-01-14",
+   "status": "resolved"
+  },
+  {
+   "key": "export-003",
+   "family_id": "export-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Download CSV always returns exactly 100,000 rows",
+   "description": "Customer says the Download CSV button on the Transactions table returns exactly 100,000 rows, although the table reports 340,000.",
+   "resolution_notes": "Instant downloads are capped at 100,000 rows; larger tables need the 'Export full dataset' option, which runs as a background job, and the cap was only documented in the help centre. Showed the admin the background option, and a banner now appears when the cap is hit. Confirmed the background export delivered all 340,000 rows.",
+   "tags": [
+    "csv",
+    "row-cap",
+    "background-export"
+   ],
+   "created_at": "2025-08-05",
+   "status": "resolved"
+  },
+  {
+   "key": "export-004",
+   "family_id": "export-f01",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "A plan limit is involved, but the customer's problem is an incomplete export file and nothing was charged, so it is export rather than billing.",
+   "category": "export",
+   "subject": "Monthly sales export ends with 'Export limit reached'",
+   "description": "A Starter-plan customer's monthly sales export stops at 50 MB with 'Export limit reached' written in the last row; they did not know any limit existed.",
+   "resolution_notes": "Starter exports are limited to 50 MB per file, a limit shown in Plan & Billing but not in the export dialog. Helped the customer split the export by region so each file stays under the limit, and requested that the limit be shown in the dialog. Confirmed four regional files covered the full month.",
+   "tags": [
+    "export-size-limit",
+    "starter-plan",
+    "split-export"
+   ],
+   "created_at": "2026-03-24",
+   "status": "resolved"
+  },
+  {
+   "key": "export-005",
+   "family_id": "export-f01",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Transactions export returns only 500 rows",
+   "description": "Exporting the Transactions table gives exactly 500 rows, the same number visible on the first page of the on-screen table.",
+   "resolution_notes": "The table widget had 'Export visible page only' selected in its export settings, an option the dashboard author had enabled to keep files small. With the author's agreement, switched the widget to 'Export all rows'. Confirmed the export returned all 62,300 rows.",
+   "tags": [
+    "table-widget",
+    "export-settings",
+    "pagination"
+   ],
+   "created_at": "2025-10-02",
+   "status": "resolved"
+  },
+  {
+   "key": "export-006",
+   "family_id": "export-f01",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The symptom is a truncated export file produced by an export-job limit rather than general slowness of the application, so it is export rather than perf.",
+   "category": "export",
+   "subject": "Inventory export ends with 'Partial results: query time limit reached'",
+   "description": "Store operations exported inventory snapshots for 400 stores; the file stops with the footer 'Partial results: query time limit reached'.",
+   "resolution_notes": "The export ran the whole inventory query in one pass and hit the 10-minute per-query limit for export jobs, so the file was written with whatever had returned. Enabled chunked export by store for the workspace, which keeps each chunk within the limit and assembles the file at the end. Confirmed the export completed for all 400 stores without the footer.",
+   "tags": [
+    "inventory-export",
+    "query-time-limit",
+    "chunked-export"
+   ],
+   "created_at": "2026-06-18",
+   "status": "resolved"
+  },
+  {
+   "key": "export-007",
+   "family_id": "export-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "PDF export stuck at 'Preparing' since morning",
+   "description": "A PDF export of the regional performance dashboard has shown 'Preparing...' in Export Center for hours and never finishes.",
+   "resolution_notes": "The export job crashed on a text widget embedding an image from a URL that now returns 404, and the job status was never moved off Preparing. Removed the broken image reference with the author and re-ran the export; engineering added failure reporting for widget render errors. Confirmed the PDF was produced in under a minute.",
+   "tags": [
+    "export-job",
+    "stuck-export",
+    "broken-image"
+   ],
+   "created_at": "2025-03-19",
+   "status": "resolved"
+  },
+  {
+   "key": "export-008",
+   "family_id": "export-f02",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "'Unsupported field type: geo_point' on CSV export",
+   "description": "Exporting the store locations table to CSV fails with 'Export failed: Unsupported field type: geo_point'.",
+   "resolution_notes": "The CSV writer had no serializer for geographic point fields. As a workaround the customer added calculated latitude and longitude columns and excluded the geo field; native support, writing points as 'lat,lon' text, shipped two weeks later. Confirmed the original table exported successfully after the release.",
+   "tags": [
+    "csv",
+    "field-type",
+    "geo-field"
+   ],
+   "created_at": "2025-11-05",
+   "status": "resolved"
+  },
+  {
+   "key": "export-009",
+   "family_id": "export-f02",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "No 'Your export is ready' notification",
+   "description": "Background exports finish in Export Center, but the users who requested them never get the 'Your export is ready' email or in-app notification.",
+   "resolution_notes": "Users who had muted activity digest emails were also excluded from export-ready notifications, because both shared one preference flag. Split the preference so export notifications follow their own setting. Confirmed the affected users were notified for their next exports.",
+   "tags": [
+    "export-notification",
+    "notification-preferences"
+   ],
+   "created_at": "2026-08-19",
+   "status": "resolved"
+  },
+  {
+   "key": "export-010",
+   "family_id": "export-f02",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Cancelled export still emailed the file",
+   "description": "A user cancelled a very large export in Export Center, but an hour later the file arrived by email anyway.",
+   "resolution_notes": "Cancelling only hid the job from the list; the worker did not check for cancellation between chunks, so it finished and delivered the file. A cancellation check between chunks was added and the stale job was purged. Verified that a test export cancelled mid-run stopped and sent nothing.",
+   "tags": [
+    "export-job",
+    "cancellation"
+   ],
+   "created_at": "2025-06-30",
+   "status": "resolved"
+  },
+  {
+   "key": "export-011",
+   "family_id": "export-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Exports marked Failed with an empty details panel",
+   "description": "Several exports from the same dashboard show status Failed, and the details panel gives no reason.",
+   "resolution_notes": "A calculated field referenced a column that had been renamed in the data model; the validation error was logged but not surfaced in Export Center. Updated the calculated field to the new column name, and Export Center now displays validation errors. Confirmed new exports completed and a deliberately broken test export showed its reason.",
+   "tags": [
+    "export-job",
+    "calculated-field",
+    "error-reporting"
+   ],
+   "created_at": "2026-02-05",
+   "status": "resolved"
+  },
+  {
+   "key": "export-012",
+   "family_id": "export-f02",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Large merchandising dashboard fails with 'Render limit exceeded'",
+   "description": "A merchandising team's dashboard with more than 60 widgets fails to export to PDF with 'Render limit exceeded'.",
+   "resolution_notes": "The PDF exporter had a hard limit of 50 widgets per document. Helped the team split the dashboard into two tabs and export each; the limit was later raised to 120 with automatic pagination. Confirmed both tab exports succeeded.",
+   "tags": [
+    "pdf",
+    "widget-limit",
+    "export-job"
+   ],
+   "created_at": "2025-09-23",
+   "status": "resolved"
+  },
+  {
+   "key": "export-013",
+   "family_id": "export-f03",
+   "related_group": "export-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Monday report now arrives at 9:00 instead of 8:00",
+   "description": "Since the clocks changed in spring, the Monday sales summary reaches the European store managers an hour later than scheduled.",
+   "resolution_notes": "The schedule stored a fixed UTC offset (+01:00) rather than the workspace's named time zone, so it did not follow the daylight saving change. Converted the schedule to the named time zone. Confirmed the next Monday delivery arrived at 08:00 local time.",
+   "tags": [
+    "scheduled-report",
+    "daylight-saving",
+    "time-zone"
+   ],
+   "created_at": "2025-04-07",
+   "status": "resolved"
+  },
+  {
+   "key": "export-014",
+   "family_id": "export-f03",
+   "related_group": "export-g01",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Daily inventory report arriving before the overnight data",
+   "description": "Agent summary: US retailer, daily inventory report set for 06:00 has been arriving at 05:00 since early November, so regional managers get a snapshot that misses the overnight receiving batch.",
+   "resolution_notes": "Schedules created before a scheduler change saved a fixed offset, so when daylight saving ended the run moved to 05:00 local time, before the receiving batch had loaded. Re-saved the schedule with the named time zone and sent a one-off delivery with complete data. Confirmed the following morning's report arrived at 06:00 including the overnight receipts.",
+   "tags": [
+    "scheduled-report",
+    "daylight-saving",
+    "delivery-time"
+   ],
+   "created_at": "2025-11-12",
+   "status": "resolved"
+  },
+  {
+   "key": "export-015",
+   "family_id": "export-f03",
+   "related_group": "export-g01",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "All 30 schedules shifted an hour after the clock change",
+   "description": "The admin reports that every one of their 30 scheduled reports moved by an hour after the daylight saving change and asks whether they have to re-save each one by hand.",
+   "resolution_notes": "The older schedules carried a fixed UTC offset. As an immediate workaround, support re-saved all 30 schedules in bulk with the named time zone using an internal tool; a migration converting every fixed-offset schedule platform-wide was scheduled for the following week. Confirmed the next deliveries ran at the intended local times.",
+   "tags": [
+    "scheduled-report",
+    "daylight-saving",
+    "bulk-update"
+   ],
+   "created_at": "2026-03-31",
+   "status": "resolved"
+  },
+  {
+   "key": "export-016",
+   "family_id": "export-f03",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Report set for day 30 never sent in February",
+   "description": "A report scheduled for 'day 30 of every month' did not go out at all in February.",
+   "resolution_notes": "The scheduler skipped months that lack the configured day instead of falling back to the last day. Switched the schedule to the 'last day of month' option, which matched the customer's intent, and the scheduler was updated to fall back automatically. Confirmed a catch-up run for February was sent and the March run was queued for the 31st.",
+   "tags": [
+    "scheduled-report",
+    "month-end",
+    "schedule-rule"
+   ],
+   "created_at": "2026-03-02",
+   "status": "resolved"
+  },
+  {
+   "key": "export-017",
+   "family_id": "export-f03",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Duplicate scheduled report emails are export rather than alerts, because no metric threshold rule is involved.",
+   "category": "export",
+   "subject": "Recipients get the Monday KPI report twice",
+   "description": "Store leads receive two identical copies of the Monday KPI report a few minutes apart.",
+   "resolution_notes": "The dashboard had been duplicated, and the copy kept the original's schedule, so both dashboards emailed the same recipients. Removed the schedule from the copy at the owner's request. Confirmed recipients received a single report the following Monday.",
+   "tags": [
+    "scheduled-report",
+    "duplicate-delivery",
+    "dashboard-copy"
+   ],
+   "created_at": "2025-07-21",
+   "status": "resolved"
+  },
+  {
+   "key": "export-018",
+   "family_id": "export-f03",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "The trigger was a user deactivation, but the failure is in scheduled report delivery, so it is export rather than perm.",
+   "category": "export",
+   "subject": "Five scheduled reports stopped after a manager left",
+   "description": "Five scheduled reports stopped going out in the same week that a regional manager left the company.",
+   "resolution_notes": "Schedules run with their owner's permissions, and deactivating the owner paused all of that person's schedules. Transferred the schedules to the new regional manager at the admin's request, which reactivated them. Confirmed all five were sent on their next run.",
+   "tags": [
+    "scheduled-report",
+    "schedule-owner",
+    "deactivated-user"
+   ],
+   "created_at": "2026-05-12",
+   "status": "resolved"
+  },
+  {
+   "key": "export-019",
+   "family_id": "export-f04",
+   "related_group": "export-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Report link says 'This link has already been used'",
+   "description": "Store managers clicking the download link in the weekly report email see 'This link has already been used', even the first time they open it.",
+   "resolution_notes": "The customer's email security gateway opens every link to scan it, which consumed our single-use download tokens before the managers clicked. Rather than asking IT to relax scanning, switched the workspace to reusable links that last 7 days and require sign-in. Confirmed managers could open the next report's link.",
+   "tags": [
+    "report-email",
+    "download-link",
+    "link-scanning"
+   ],
+   "created_at": "2025-05-27",
+   "status": "resolved"
+  },
+  {
+   "key": "export-020",
+   "family_id": "export-f04",
+   "related_group": "export-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Report links expired seconds after delivery",
+   "description": "Every link in the customer's scheduled report emails shows 'expired', even when clicked moments after the email lands.",
+   "resolution_notes": "Delivery logs showed each link was fetched within a second of delivery from the customer's mail filtering service, which marked the one-time token as used. Enabled sign-in-protected reusable links for the workspace. Confirmed in the logs that the next delivery's links were opened by the recipients themselves.",
+   "tags": [
+    "report-email",
+    "one-time-token",
+    "mail-filter"
+   ],
+   "created_at": "2026-04-14",
+   "status": "resolved"
+  },
+  {
+   "key": "export-021",
+   "family_id": "export-f04",
+   "related_group": "export-g02",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Emailed reports undownloadable since new inbound mail filter",
+   "description": "Since the customer's IT team rolled out a new inbound mail filter, store managers cannot download any emailed reports; the page shows 'Invalid or used token'.",
+   "resolution_notes": "The new filter pre-fetches URLs in incoming mail, using up the one-time tokens. Moved the workspace to reusable sign-in links and gave IT our sender details so they could recognise report emails; the filter itself was left unchanged. Confirmed downloads worked for the next scheduled send.",
+   "tags": [
+    "report-email",
+    "mail-filter",
+    "download-token"
+   ],
+   "created_at": "2025-12-10",
+   "status": "resolved"
+  },
+  {
+   "key": "export-022",
+   "family_id": "export-f04",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The restriction is a report delivery setting rather than a user's access rights, so it is export rather than perm.",
+   "category": "export",
+   "subject": "External supplier never receives sell-through report",
+   "description": "A supplier contact added as a recipient of the weekly sell-through report never gets it, while internal recipients do.",
+   "resolution_notes": "The workspace delivery policy allows report recipients only on the customer's verified domains, and the supplier uses a different domain. After their data-sharing review, the admin added the supplier's domain to the allowed recipient domains. Confirmed the supplier received the next report.",
+   "tags": [
+    "report-recipients",
+    "recipient-domain-policy",
+    "external-recipient"
+   ],
+   "created_at": "2025-08-26",
+   "status": "resolved"
+  },
+  {
+   "key": "export-023",
+   "family_id": "export-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Board pack email bounces as too large",
+   "description": "The scheduled board pack with five PDF attachments bounces with '552 Message size exceeds fixed maximum message size'.",
+   "resolution_notes": "The combined attachments reached 31 MB, over the recipient server's 25 MB limit. Switched the schedule to send one merged, compressed PDF and to send a link instead whenever a delivery exceeds 20 MB. Confirmed the next board pack was delivered at 9 MB.",
+   "tags": [
+    "report-email",
+    "attachment-size",
+    "email-bounce"
+   ],
+   "created_at": "2026-09-08",
+   "status": "resolved"
+  },
+  {
+   "key": "export-024",
+   "family_id": "export-f04",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "This is deliverability of report emails; no network path or firewall was involved, so it stays in export rather than connectivity.",
+   "category": "export",
+   "subject": "Weekly reports landing in spam after sender change",
+   "description": "After report emails moved to a new sending subdomain (reports.example.com), the customer's recipients started finding the weekly report in their spam folders.",
+   "resolution_notes": "The customer's mail system had a rule trusting only our previous sender address. Provided the new sending domain and its authentication records so their mail team could update the rule. Confirmed the next week's reports reached inboxes.",
+   "tags": [
+    "report-email",
+    "spam-filtering",
+    "sender-domain"
+   ],
+   "created_at": "2025-01-28",
+   "status": "resolved"
+  },
+  {
+   "key": "export-025",
+   "family_id": "export-f05",
+   "related_group": "export-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Accented store names garbled in CSV",
+   "description": "Store names such as 'Café du Marché' appear as 'CafÃ© du MarchÃ©' when the CSV export is opened in a spreadsheet application.",
+   "resolution_notes": "The CSV was UTF-8 encoded without a byte-order mark, so the spreadsheet application assumed a legacy encoding. Enabled the 'UTF-8 with BOM' export option for the workspace. Confirmed the names displayed correctly when the file was opened by double-clicking.",
+   "tags": [
+    "csv",
+    "character-encoding",
+    "utf8-bom"
+   ],
+   "created_at": "2025-03-04",
+   "status": "resolved"
+  },
+  {
+   "key": "export-026",
+   "family_id": "export-f05",
+   "related_group": "export-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Euro signs and quotes turn into odd symbols after export",
+   "description": "Merchandisers say degree signs, curly quotes and euro symbols in product descriptions become strings like 'â‚¬' in the exported file.",
+   "resolution_notes": "The file was valid UTF-8 but had no BOM, so the desktop spreadsheet decoded it as Windows-1252. Set BOM output as the workspace default and showed the merchandisers how to import with UTF-8 explicitly in their older templates. Confirmed the symbols displayed correctly in a fresh export.",
+   "tags": [
+    "csv",
+    "character-encoding",
+    "special-characters"
+   ],
+   "created_at": "2025-10-16",
+   "status": "resolved"
+  },
+  {
+   "key": "export-027",
+   "family_id": "export-f05",
+   "related_group": "export-g03",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Japanese product names unreadable in exports",
+   "description": "A customer with stores in Japan sees product names turned into strings of accented Latin characters whenever they open a CSV export.",
+   "resolution_notes": "Exports were UTF-8 without a BOM, which their spreadsheet software did not detect, so the multi-byte characters were misread. Switched the workspace default to include a BOM. Confirmed the product names displayed correctly in the next export.",
+   "tags": [
+    "csv",
+    "utf8-bom",
+    "japanese-text"
+   ],
+   "created_at": "2026-07-07",
+   "status": "resolved"
+  },
+  {
+   "key": "export-028",
+   "family_id": "export-f05",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Names still corrupted with 'UTF-8 with BOM' enabled",
+   "description": "Even with 'UTF-8 with BOM' switched on, accented letters in some customer names come out as question marks in CSV exports, so 'Renée' appears as 'Ren?e'.",
+   "resolution_notes": "A previous admin had enabled the 'ASCII-safe output' sanitiser on the export profile, which replaces every non-ASCII character with '?'. With the current admin's agreement, turned the sanitiser off. Confirmed accented names exported intact.",
+   "tags": [
+    "csv",
+    "export-sanitizer",
+    "character-encoding"
+   ],
+   "created_at": "2026-01-21",
+   "status": "resolved"
+  },
+  {
+   "key": "export-029",
+   "family_id": "export-f05",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "Locale is involved, but the problem is the export file's delimiter rather than the workspace's locale settings, so it is export rather than workspace_admin.",
+   "category": "export",
+   "subject": "CSV opens in one column for French users",
+   "description": "French users' spreadsheet application puts every row into a single column when opening our CSV, because it expects semicolons as separators.",
+   "resolution_notes": "Exports always used a comma delimiter, and with comma decimal separators the file could not be split correctly in that locale. Set the workspace's CSV delimiter option to semicolon. Confirmed the file opened in separate columns with decimals intact.",
+   "tags": [
+    "csv",
+    "delimiter",
+    "locale"
+   ],
+   "created_at": "2025-06-17",
+   "status": "resolved"
+  },
+  {
+   "key": "export-030",
+   "family_id": "export-f05",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Order notes with line breaks split rows in ERP import",
+   "description": "Order notes that contain line breaks spread single orders across several rows when the CSV is loaded by the customer's ERP import tool.",
+   "resolution_notes": "Fields containing newlines were quoted correctly, but the ERP importer does not support quoted newlines. Enabled the export option that replaces line breaks inside fields with spaces for this scheduled export. Confirmed the ERP import loaded one row per order.",
+   "tags": [
+    "csv",
+    "line-breaks",
+    "erp-import"
+   ],
+   "created_at": "2026-10-13",
+   "status": "resolved"
+  },
+  {
+   "key": "export-031",
+   "family_id": "export-f06",
+   "related_group": "export-g04",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Export ignores the store filter I just applied",
+   "description": "A regional manager filtered the dashboard to her 12 stores, but the CSV she exported contains all 140.",
+   "resolution_notes": "Exports were generated from the dashboard's saved default filters, not the filters applied in the current session, and she had not saved her view. Showed her how to save the filtered view as a personal view; the exporter was later changed to use session filters. Confirmed an export from the saved view contained only her 12 stores.",
+   "tags": [
+    "export-filters",
+    "session-filters",
+    "saved-view"
+   ],
+   "created_at": "2025-04-23",
+   "status": "resolved"
+  },
+  {
+   "key": "export-032",
+   "family_id": "export-f06",
+   "related_group": "export-g04",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "PDF shows last month although I picked this week",
+   "description": "Customer set the date picker to 'This week' and exported to PDF, but the PDF shows the dashboard's default 'Last month' range.",
+   "resolution_notes": "The PDF exporter rendered the dashboard with its saved filter state, so the unsaved date change was ignored. As a workaround we saved a personal view with 'This week' and exported from it; the permanent change to carry session filters into exports shipped in the next release. Confirmed the PDF header showed the selected week.",
+   "tags": [
+    "pdf",
+    "date-filter",
+    "session-filters"
+   ],
+   "created_at": "2025-09-04",
+   "status": "resolved"
+  },
+  {
+   "key": "export-033",
+   "family_id": "export-f06",
+   "related_group": "export-g04",
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Exported totals include a channel I filtered out",
+   "description": "Paraphrasing the user: 'I excluded wholesale with the quick filter and the screen total dropped, but the export total is still the higher number.'",
+   "resolution_notes": "Quick-filter selections lived only in the browser session and were not passed to the export request, which applied the saved filters instead. Applied the same exclusion as a saved filter on the user's personal view. Confirmed the exported total matched the on-screen figure.",
+   "tags": [
+    "export-filters",
+    "quick-filter",
+    "total-mismatch"
+   ],
+   "created_at": "2025-06-10",
+   "status": "resolved"
+  },
+  {
+   "key": "export-034",
+   "family_id": "export-f06",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The columns were hidden for readability, not as an access control, so the problem is export contents rather than perm.",
+   "category": "export",
+   "subject": "Hidden cost columns appear in CSV export",
+   "description": "Columns the author hid in the table widget for readability, cost price and supplier code, still appear in the exported CSV.",
+   "resolution_notes": "Column visibility in the widget was a display setting only, and the export used the widget's full query. With the author, set the widget's export option to 'Visible columns only'. Confirmed the exported file contained only the displayed columns.",
+   "tags": [
+    "hidden-columns",
+    "table-widget",
+    "export-contents"
+   ],
+   "created_at": "2025-12-18",
+   "status": "resolved"
+  },
+  {
+   "key": "export-035",
+   "family_id": "export-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Export sort order differs from the table",
+   "description": "The table is sorted by revenue descending on screen, but the export comes out in alphabetical order of store name.",
+   "resolution_notes": "Interactive column sorting was not passed to the export query, which used the widget's default sort. Set the widget's default sort to revenue descending for the immediate need, and the exporter was then updated to respect the active sort. Confirmed the export order matched the screen.",
+   "tags": [
+    "export-sort",
+    "table-widget"
+   ],
+   "created_at": "2026-02-26",
+   "status": "resolved"
+  },
+  {
+   "key": "export-036",
+   "family_id": "export-f06",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Grand total row missing from export",
+   "description": "The on-screen table shows a grand total row, but neither the CSV nor the Excel export includes it.",
+   "resolution_notes": "Totals rows are computed in the display layer and were excluded from data exports by default. Enabled 'Include totals row' in the widget's export settings. Confirmed both formats included the row labelled 'Total'.",
+   "tags": [
+    "totals-row",
+    "table-widget",
+    "export-settings"
+   ],
+   "created_at": "2025-07-09",
+   "status": "resolved"
+  },
+  {
+   "key": "export-037",
+   "family_id": "export-f07",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "The stored values are correct and the dashboard shows them correctly; only the export file representation differed, so export rather than data_quality.",
+   "category": "export",
+   "subject": "Order timestamps in CSV five hours ahead of dashboard",
+   "description": "Order timestamps in CSV exports appear five hours later than the same orders on the dashboard.",
+   "resolution_notes": "Exports wrote timestamps in UTC without an offset, while the dashboard shows them in the workspace time zone. Enabled the export option that converts timestamps to the workspace time zone and appends the offset. Confirmed exported times matched the dashboard.",
+   "tags": [
+    "timestamps",
+    "utc-offset",
+    "csv"
+   ],
+   "created_at": "2025-05-08",
+   "status": "resolved"
+  },
+  {
+   "key": "export-038",
+   "family_id": "export-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Leading zeros stripped from store codes",
+   "description": "Store codes such as 00427 become 427 in Excel exports, which breaks lookups in the customer's spreadsheets.",
+   "resolution_notes": "The Excel writer inferred a numeric type for the code column. Marked the store_code field as text in the data model so exports write it as a text cell. Confirmed the Excel export shows 00427.",
+   "tags": [
+    "leading-zeros",
+    "store-code",
+    "xlsx"
+   ],
+   "created_at": "2026-04-02",
+   "status": "resolved"
+  },
+  {
+   "key": "export-039",
+   "family_id": "export-f07",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "March export missing sales from 31 March",
+   "description": "An export for the custom range 1 to 31 March ends on 30 March; sales from the 31st are not in the file even though the dashboard includes them.",
+   "resolution_notes": "The range picker passed the end date to the export query as an exclusive boundary at 00:00 on 31 March, while the dashboard treats the end date as inclusive. The export request was fixed to use the end of the last day. Confirmed a March export now includes 31 March sales.",
+   "tags": [
+    "date-range",
+    "end-date-boundary",
+    "export-query"
+   ],
+   "created_at": "2025-04-02",
+   "status": "resolved"
+  },
+  {
+   "key": "export-040",
+   "family_id": "export-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The workspace locale is set correctly and the export ignored it, so this is export rather than workspace_admin.",
+   "category": "export",
+   "subject": "Revenue exported as 1,234.56 for German users",
+   "description": "German users see revenue as 1.234,56 on screen, but the CSV export writes 1,234.56, which their spreadsheet reads as text.",
+   "resolution_notes": "CSV exports always used the invariant number format. Enabled 'Use workspace number format' for CSV exports together with a semicolon delimiter. Confirmed the numbers imported as numeric values.",
+   "tags": [
+    "number-format",
+    "decimal-separator",
+    "csv"
+   ],
+   "created_at": "2026-06-09",
+   "status": "resolved"
+  },
+  {
+   "key": "export-041",
+   "family_id": "export-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "No values are wrong after ingestion; the export omitted the currency column, so it is export rather than data_quality.",
+   "category": "export",
+   "subject": "No currency on exported revenue for multi-currency stores",
+   "description": "Revenue values in exports carry no currency, so a customer with stores in several countries cannot tell euro rows from pound rows.",
+   "resolution_notes": "Exports wrote amounts as raw numbers and left out the currency attribute shown on screen. Enabled the 'Include currency code column' option for the dataset. Confirmed each exported row now carries its ISO currency code.",
+   "tags": [
+    "currency-code",
+    "multi-currency",
+    "export-columns"
+   ],
+   "created_at": "2025-11-25",
+   "status": "resolved"
+  },
+  {
+   "key": "export-042",
+   "family_id": "export-f07",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Conversion rate exported as 0.034 instead of 3.4%",
+   "description": "A conversion rate displayed as 3.4% on the dashboard appears as 0.034 in the CSV.",
+   "resolution_notes": "Display formatting is not applied to raw CSV values by design, so the underlying number is identical. Offered the 'Export formatted values' option, which writes '3.4%' but turns the column into text, and the customer chose it for that report. Confirmed the next export showed percentages.",
+   "tags": [
+    "percentage-format",
+    "formatted-values",
+    "csv"
+   ],
+   "created_at": "2026-09-29",
+   "status": "resolved"
+  },
+  {
+   "key": "export-043",
+   "family_id": "export-f08",
+   "related_group": "export-g05",
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": "The charts display correctly on screen and are blank only in the generated PDF, so the problem is in export rather than render.",
+   "category": "export",
+   "subject": "Three charts empty in PDF export",
+   "description": "The PDF export of the store performance dashboard contains titles and tables, but three chart areas are empty boxes; on screen the charts look fine.",
+   "resolution_notes": "The PDF renderer took its snapshot before lazy-loaded widgets below the fold had finished loading. The renderer was changed to wait for each widget's ready signal before capturing. Confirmed all charts appeared in the next PDF.",
+   "tags": [
+    "pdf",
+    "missing-charts",
+    "lazy-loading"
+   ],
+   "created_at": "2025-03-18",
+   "status": "resolved"
+  },
+  {
+   "key": "export-044",
+   "family_id": "export-f08",
+   "related_group": "export-g05",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Lower half of scheduled PDF is grey placeholders",
+   "description": "Scheduled PDF reports show the top widgets correctly, but everything below the first screen height is grey placeholder boxes.",
+   "resolution_notes": "Widgets outside the initial viewport load only when scrolled into view, and the headless renderer captured the page without triggering them. Disabled lazy loading for export rendering on the workspace. Confirmed the next scheduled PDF showed all 18 widgets.",
+   "tags": [
+    "scheduled-pdf",
+    "lazy-loading",
+    "placeholders"
+   ],
+   "created_at": "2025-02-25",
+   "status": "resolved"
+  },
+  {
+   "key": "export-045",
+   "family_id": "export-f08",
+   "related_group": "export-g05",
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "KPI tiles print 'Loading…' in exported PDF",
+   "description": "Some KPI tiles in the exported PDF literally show the text 'Loading…' instead of their numbers.",
+   "resolution_notes": "The renderer captured the dashboard before the slower tiles' queries had returned. As a workaround the author moved the slow tiles to the top so they started loading first; the permanent change, making the renderer wait for every widget's ready signal, followed in a later release. Confirmed the tiles showed values after the workaround and again after the release.",
+   "tags": [
+    "pdf",
+    "kpi-tile",
+    "render-timing"
+   ],
+   "created_at": "2025-01-20",
+   "status": "resolved"
+  },
+  {
+   "key": "export-046",
+   "family_id": "export-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Wide tables cut off at the right edge of the PDF",
+   "description": "Wide tables in PDF exports are cut off after the eighth column.",
+   "resolution_notes": "Page orientation defaulted to portrait and tables were not scaled to the page. Set the dashboard's PDF export to landscape with 'fit to width' scaling. Confirmed all 14 columns fit on the page.",
+   "tags": [
+    "pdf",
+    "page-orientation",
+    "wide-table"
+   ],
+   "created_at": "2025-08-12",
+   "status": "resolved"
+  },
+  {
+   "key": "export-047",
+   "family_id": "export-f08",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Chinese store names show as boxes in PDF",
+   "description": "Store names written in Simplified Chinese appear as empty rectangles in PDF exports, though the browser displays them correctly.",
+   "resolution_notes": "The PDF renderer's font set had no CJK glyphs. Added a CJK-capable font to the renderer's fallback list. Confirmed the names rendered correctly in a new PDF.",
+   "tags": [
+    "pdf",
+    "cjk-fonts",
+    "missing-glyphs"
+   ],
+   "created_at": "2026-05-28",
+   "status": "resolved"
+  },
+  {
+   "key": "export-048",
+   "family_id": "export-f08",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "PDFs come out with black backgrounds for dark-mode users",
+   "description": "Users who work in dark mode get PDF exports with black backgrounds, which are hard to read when printed.",
+   "resolution_notes": "The exporter inherited the requesting user's display theme. Set a print-friendly light theme as the default for PDF exports regardless of the user's theme. Confirmed a dark-mode user's export rendered on a white background.",
+   "tags": [
+    "pdf",
+    "dark-theme",
+    "print-layout"
+   ],
+   "created_at": "2026-10-22",
+   "status": "resolved"
+  },
+  {
+   "key": "export-049",
+   "family_id": "export-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Date columns in Excel export are text",
+   "description": "Date columns in XLSX exports are left-aligned text, so finance cannot filter or group them by month.",
+   "resolution_notes": "Dates were written as preformatted strings to preserve the workspace date format. Enabled native date cells for Excel exports, with the workspace format applied as cell formatting. Confirmed the columns sorted and grouped as dates.",
+   "tags": [
+    "xlsx",
+    "date-cells",
+    "cell-type"
+   ],
+   "created_at": "2025-05-15",
+   "status": "resolved"
+  },
+  {
+   "key": "export-050",
+   "family_id": "export-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Excel export fails with 'Invalid sheet name'",
+   "description": "Exporting a multi-table dashboard to Excel fails with 'Invalid sheet name'.",
+   "resolution_notes": "Each table becomes a sheet named after its widget title; two titles were longer than Excel's 31-character limit and one also contained a slash. The exporter now truncates and sanitises sheet names. Confirmed the workbook generated with all six sheets.",
+   "tags": [
+    "xlsx",
+    "sheet-name",
+    "export-error"
+   ],
+   "created_at": "2026-01-15",
+   "status": "resolved"
+  },
+  {
+   "key": "export-051",
+   "family_id": "export-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Excel asks to repair every exported workbook",
+   "description": "Opening Excel exports triggers 'We found a problem with some content... Do you want us to try to recover as much as we can?'",
+   "resolution_notes": "A product description column contained vertical-tab control characters, which are not allowed in the workbook's XML. The writer now strips invalid XML characters. Confirmed the regenerated workbook opened without the repair prompt.",
+   "tags": [
+    "xlsx",
+    "repair-prompt",
+    "control-characters"
+   ],
+   "created_at": "2025-09-16",
+   "status": "resolved"
+  },
+  {
+   "key": "export-052",
+   "family_id": "export-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": "The revenue values themselves are correct; only the cell type in the export was wrong, so it is export rather than data_quality.",
+   "category": "export",
+   "subject": "Revenue cells flagged 'Number stored as text'",
+   "description": "Every revenue cell in the XLSX export shows the 'Number stored as text' warning, and SUM returns 0.",
+   "resolution_notes": "The revenue field was a calculated field with string output because it concatenated a currency symbol. Changed the calculated field to return a number and applied currency formatting in the widget instead. Confirmed the exported cells summed correctly.",
+   "tags": [
+    "xlsx",
+    "cell-type",
+    "calculated-field"
+   ],
+   "created_at": "2026-07-23",
+   "status": "resolved"
+  },
+  {
+   "key": "export-053",
+   "family_id": "export-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Merged header rows block pivot tables in Excel",
+   "description": "Finance cannot build a pivot table from the Excel export because the first two rows are merged group headers.",
+   "resolution_notes": "Exports from grouped tables include merged header rows by default. Enabled 'Flat header' export mode for that widget, which writes a single header row with combined labels. Confirmed a pivot table could be created directly from the export.",
+   "tags": [
+    "xlsx",
+    "merged-headers",
+    "pivot"
+   ],
+   "created_at": "2025-12-02",
+   "status": "resolved"
+  },
+  {
+   "key": "export-054",
+   "family_id": "export-f09",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Conditional formatting colours lost in Excel export",
+   "description": "Red and green conditional formatting on the margin table does not carry over into the Excel export.",
+   "resolution_notes": "Cell styling is not exported by default, to keep files small. Enabled the 'Include cell styling' option on the widget. Confirmed the export showed the same red and green highlights.",
+   "tags": [
+    "xlsx",
+    "conditional-formatting",
+    "cell-styling"
+   ],
+   "created_at": "2026-08-04",
+   "status": "resolved"
+  },
+  {
+   "key": "export-055",
+   "family_id": "export-f10",
+   "related_group": "export-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Customer emails show as asterisks in exports",
+   "description": "Loyalty analysts see full customer email addresses on the dashboard, but exports show values like '****@example.com'.",
+   "resolution_notes": "The workspace's data protection policy masks fields tagged as personal data in all exports, while on-screen viewing is governed separately, so this was working as configured. The admin chose to keep the policy, and for the team's matching task we added a hashed email key column, which is not masked. Confirmed the export contained the hashed keys.",
+   "tags": [
+    "data-masking",
+    "personal-data",
+    "export-policy"
+   ],
+   "created_at": "2025-06-05",
+   "status": "resolved"
+  },
+  {
+   "key": "export-056",
+   "family_id": "export-f10",
+   "related_group": "export-g08",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Phone column blank in scheduled export after policy change",
+   "description": "A scheduled export of loyalty sign-ups started arriving with an empty phone column right after the admin turned on the data protection policy.",
+   "resolution_notes": "The policy applies to scheduled exports as well as manual ones, and the phone field's masking style was 'remove', which blanks the column. The admin confirmed masking was intended and switched the field to partial masking, showing the last four digits for store follow-ups. Confirmed the next export showed partially masked numbers.",
+   "tags": [
+    "data-masking",
+    "scheduled-export",
+    "personal-data"
+   ],
+   "created_at": "2026-02-19",
+   "status": "resolved"
+  },
+  {
+   "key": "export-057",
+   "family_id": "export-f10",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": "Export restrictions are an export feature setting, so this stays in export rather than perm.",
+   "category": "export",
+   "subject": "Export menu missing on the payroll-cost dashboard only",
+   "description": "Editors can export every dashboard except the payroll-cost dashboard, where the export menu does not appear at all.",
+   "resolution_notes": "The dashboard owner had enabled 'Restrict export' on that dashboard, which overrides role-level export rights. The owner kept the restriction but added the two finance editors to the dashboard's export exception list. Confirmed those editors could export and others still could not.",
+   "tags": [
+    "export-restriction",
+    "dashboard-setting",
+    "export-exception"
+   ],
+   "created_at": "2025-10-29",
+   "status": "resolved"
+  },
+  {
+   "key": "export-058",
+   "family_id": "export-f10",
+   "related_group": null,
+   "challenge": "negation_or_opposite",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Viewers can suddenly export to CSV",
+   "description": "The customer's security team noticed that viewers can now download CSV exports, which their internal policy forbids.",
+   "resolution_notes": "An admin had switched the workspace export policy to 'All roles' while trying to enable exports for the analysts group only. Reverted the policy to 'Editors and above' and added an export exception for the analysts group. Confirmed viewers no longer see the export menu and analysts can still export.",
+   "tags": [
+    "export-policy",
+    "viewer-role",
+    "policy-change"
+   ],
+   "created_at": "2026-05-06",
+   "status": "resolved"
+  },
+  {
+   "key": "export-059",
+   "family_id": "export-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Confidential watermark missing from exported PDFs",
+   "description": "Compliance requires a 'Confidential - internal' watermark on exported PDFs, but recent exports have none.",
+   "resolution_notes": "The watermark was configured on the legacy export profile, while the new PDF renderer reads the current export policy, where the watermark was empty. Copied the watermark setting into the export policy. Confirmed new PDFs carry the watermark on every page.",
+   "tags": [
+    "pdf-watermark",
+    "export-policy",
+    "compliance"
+   ],
+   "created_at": "2025-03-11",
+   "status": "resolved"
+  },
+  {
+   "key": "export-060",
+   "family_id": "export-f10",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "'Exports are disabled during data review' for every user",
+   "description": "All users suddenly get 'Exports are disabled for this workspace during data review' whenever they try to download anything.",
+   "resolution_notes": "An admin had turned on an export freeze for an internal audit without setting an end date. Once the admin confirmed the audit had finished, lifted the freeze and showed how to schedule one with an end date. Confirmed exports worked again.",
+   "tags": [
+    "export-freeze",
+    "export-policy",
+    "audit"
+   ],
+   "created_at": "2026-09-17",
+   "status": "resolved"
+  },
+  {
+   "key": "export-061",
+   "family_id": "export-f11",
+   "related_group": null,
+   "challenge": "same_symptom_different_cause",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Only the first person on the list can open the report link",
+   "description": "On a 12-person distribution list, whoever clicks first can download the report and everyone else sees 'Link no longer valid'.",
+   "resolution_notes": "The schedule was sent to a single distribution-list address, so all 12 people shared one single-use token and the first click consumed it. Changed the schedule to individual recipients so each person gets their own link. Confirmed several recipients downloaded the next report.",
+   "tags": [
+    "download-link",
+    "distribution-list",
+    "single-use-link"
+   ],
+   "created_at": "2025-07-30",
+   "status": "resolved"
+  },
+  {
+   "key": "export-062",
+   "family_id": "export-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Friday report link expired before weekend staff opened it",
+   "description": "Weekend store managers say the link in Friday's report has expired by Saturday afternoon.",
+   "resolution_notes": "Report download links default to a 24-hour lifetime. The admin extended the lifetime to 72 hours in the delivery settings, within the policy maximum. Confirmed a Friday link still worked on Sunday.",
+   "tags": [
+    "download-link",
+    "link-expiry",
+    "weekend-staff"
+   ],
+   "created_at": "2026-03-17",
+   "status": "resolved"
+  },
+  {
+   "key": "export-063",
+   "family_id": "export-f11",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "A sign-in page appears, but the issue is how report files reach people without accounts, not login itself, so it is export rather than auth.",
+   "category": "export",
+   "subject": "Franchise owners asked to sign in when opening report link",
+   "description": "Franchise owners who have no workspace accounts are sent to a sign-in page when they click the link in the monthly report email.",
+   "resolution_notes": "The workspace policy requires sign-in for report links. Rather than making links public, configured the schedule to attach the PDF directly for those recipients, which the policy permits. Confirmed the franchise owners received the attachment.",
+   "tags": [
+    "download-link",
+    "report-recipients",
+    "pdf-attachment"
+   ],
+   "created_at": "2025-11-18",
+   "status": "resolved"
+  },
+  {
+   "key": "export-064",
+   "family_id": "export-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Analyst downloaded a colleague's export instead of her own",
+   "description": "Two analysts exported the same dashboard with different filters on the same morning, and one of them got the other's file from Export Center.",
+   "resolution_notes": "Export files were stored under a path built from the dashboard and the date, so the second export overwrote the first and both links pointed to the same location. File paths now include the job identifier. Confirmed each export downloads its own file.",
+   "tags": [
+    "export-center",
+    "file-path",
+    "wrong-file"
+   ],
+   "created_at": "2026-06-30",
+   "status": "resolved"
+  },
+  {
+   "key": "export-065",
+   "family_id": "export-f11",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Two-week-old export no longer in Export Center",
+   "description": "A user went to re-download an export from two weeks ago and it is no longer listed.",
+   "resolution_notes": "Export Center keeps files for 7 days by default, and the customer's plan allows up to 30. The admin raised retention to 30 days; files already removed could not be recovered, so we re-ran the export. Confirmed the new file was listed with a 30-day expiry.",
+   "tags": [
+    "export-center",
+    "file-retention"
+   ],
+   "created_at": "2025-01-08",
+   "status": "resolved"
+  },
+  {
+   "key": "export-066",
+   "family_id": "export-f11",
+   "related_group": null,
+   "challenge": "workaround_vs_permanent_fix",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Report link opens the wrong client workspace",
+   "description": "A consultant who belongs to two client workspaces opens a report link and lands in the other workspace with 'File not found'.",
+   "resolution_notes": "Download links did not carry the workspace context, so they resolved against the user's last-used workspace. As a workaround the consultant switched workspaces before clicking; the link format was then updated to include the workspace identifier. Confirmed new links opened in the correct workspace.",
+   "tags": [
+    "download-link",
+    "multi-workspace",
+    "workspace-context"
+   ],
+   "created_at": "2026-08-27",
+   "status": "resolved"
+  },
+  {
+   "key": "export-067",
+   "family_id": "export-f12",
+   "related_group": "export-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Daily SFTP sales file overwrites the previous day",
+   "description": "Finance expected one sales file per day in their SFTP folder but only ever finds a single sales_export.csv containing the latest day.",
+   "resolution_notes": "The delivery's filename template had no date token, so each run replaced the previous file. Changed the template to sales_export_{date}.csv. Confirmed two consecutive runs left two separate files.",
+   "tags": [
+    "sftp-delivery",
+    "filename-template",
+    "overwrite"
+   ],
+   "created_at": "2025-02-04",
+   "status": "resolved"
+  },
+  {
+   "key": "export-068",
+   "family_id": "export-f12",
+   "related_group": "export-g06",
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Auditor can't find last month's daily snapshots in storage bucket",
+   "description": "An auditor asked for last month's daily inventory snapshots, but the customer's storage bucket holds only one file for that report.",
+   "resolution_notes": "The scheduled file drop used a fixed filename, so each delivery overwrote the previous snapshot. Added a timestamp token to the filename template and regenerated the missing month from historical snapshot tables for the auditor. Confirmed 30 dated files were present.",
+   "tags": [
+    "file-drop",
+    "filename-template",
+    "storage-bucket"
+   ],
+   "created_at": "2026-04-23",
+   "status": "resolved"
+  },
+  {
+   "key": "export-069",
+   "family_id": "export-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Import job picks up half-written export files",
+   "description": "The customer's nightly import job sometimes loads a truncated CSV from the SFTP folder and misses thousands of rows.",
+   "resolution_notes": "Large files were written directly under their final name, so the customer's job could pick them up mid-transfer. Enabled the delivery option that writes to a temporary name and renames on completion. Confirmed the import job only saw complete files over a week of runs.",
+   "tags": [
+    "sftp-delivery",
+    "partial-file",
+    "atomic-rename"
+   ],
+   "created_at": "2025-08-19",
+   "status": "resolved"
+  },
+  {
+   "key": "export-070",
+   "family_id": "export-f12",
+   "related_group": null,
+   "challenge": "related_symptom_different_product",
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "File drop names carry yesterday's date",
+   "description": "Files delivered at 00:30 local time are named with the previous day's date, which confuses the customer's archive process.",
+   "resolution_notes": "The {date} token in the filename template used UTC. Switched the template to the {date_local} token, which follows the workspace time zone. Confirmed the next file was named with the correct local date.",
+   "tags": [
+    "file-drop",
+    "date-token",
+    "time-zone"
+   ],
+   "created_at": "2026-11-10",
+   "status": "resolved"
+  },
+  {
+   "key": "export-071",
+   "family_id": "export-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "SFTP files arrive zipped after compression was enabled",
+   "description": "Since an admin turned on compression to shrink emailed reports, the files dropped into the customer's SFTP folder also arrive as .zip, and their importer rejects them.",
+   "resolution_notes": "The compression setting applied to every destination of the schedule. Set compression per destination, on for email and off for SFTP. Confirmed the next SFTP drop was a plain CSV.",
+   "tags": [
+    "sftp-delivery",
+    "compression",
+    "destination-settings"
+   ],
+   "created_at": "2025-12-23",
+   "status": "resolved"
+  },
+  {
+   "key": "export-072",
+   "family_id": "export-f12",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "New column in source table broke the daily file import",
+   "description": "The customer's import job started rejecting the daily SFTP file after a dashboard author added a column to the source table.",
+   "resolution_notes": "The delivery exported the widget's live column list, so any added column changed the file layout. Pinned the delivery to a fixed column template matching the customer's import specification. Confirmed the next file matched the template and imported cleanly.",
+   "tags": [
+    "sftp-delivery",
+    "column-layout",
+    "import-spec"
+   ],
+   "created_at": "2026-02-12",
+   "status": "resolved"
+  },
+  {
+   "key": "export-073",
+   "family_id": "export-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Pivot widget exports as a long flat list",
+   "description": "Exporting a pivot widget to Excel produces a long flat list instead of the cross-tab layout seen on the dashboard.",
+   "resolution_notes": "Pivot widgets exported their underlying rows by default. Selected 'Export as displayed' for the pivot widget. Confirmed the Excel file kept the cross-tab layout with row and column headers.",
+   "tags": [
+    "pivot-table",
+    "export-layout",
+    "xlsx"
+   ],
+   "created_at": "2025-06-24",
+   "status": "resolved"
+  },
+  {
+   "key": "export-074",
+   "family_id": "export-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Store map export contains only headers",
+   "description": "Exporting data from the store map widget returns a CSV containing only the header row.",
+   "resolution_notes": "The map widget's export filtered by the current map viewport, and exports started from the widget menu sent no viewport, so no stores matched. The export now defaults to the full dataset when no viewport is supplied. Confirmed the export listed all 212 stores.",
+   "tags": [
+    "map-widget",
+    "empty-export",
+    "viewport"
+   ],
+   "created_at": "2026-03-09",
+   "status": "resolved"
+  },
+  {
+   "key": "export-075",
+   "family_id": "export-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Line chart export only gives a PNG",
+   "description": "A user wants the numbers behind a line chart, but the chart's export menu seems to offer only a PNG image.",
+   "resolution_notes": "The data download sat under 'View as table' in the chart menu, which the user had not found. Showed them the option, and the export menu now lists 'Download data (CSV)' directly. Confirmed the user downloaded the chart's data.",
+   "tags": [
+    "chart-export",
+    "data-download",
+    "png"
+   ],
+   "created_at": "2025-10-09",
+   "status": "resolved"
+  },
+  {
+   "key": "export-076",
+   "family_id": "export-f13",
+   "related_group": null,
+   "challenge": "similar_wording_different_problem",
+   "classification_rationale": "The customer suspected a calculation error, but the values are correct and only the display abbreviation differs from the export, so it stays in export rather than data_quality.",
+   "category": "export",
+   "subject": "KPI tile shows 12.4K but export says 12,388",
+   "description": "A store lead says the KPI tile shows 12.4K orders while the exported value is 12,388, and asks which figure is wrong.",
+   "resolution_notes": "Neither is wrong: the tile displays a compact rounded value, while exports contain the exact figure. Explained the difference and showed the tile setting that displays full numbers. Confirmed the tile then read 12,388.",
+   "tags": [
+    "kpi-tile",
+    "number-abbreviation",
+    "export-value"
+   ],
+   "created_at": "2026-07-14",
+   "status": "resolved"
+  },
+  {
+   "key": "export-077",
+   "family_id": "export-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Chart images blurry when pasted into slides",
+   "description": "Charts exported as PNG look blurry when the merchandising team places them into presentation slides.",
+   "resolution_notes": "PNG exports used screen resolution. Showed the team the 3x resolution and SVG options in the export menu. Confirmed the 3x PNG stayed sharp at full-slide size.",
+   "tags": [
+    "chart-export",
+    "image-resolution",
+    "svg"
+   ],
+   "created_at": "2025-04-15",
+   "status": "resolved"
+  },
+  {
+   "key": "export-078",
+   "family_id": "export-f13",
+   "related_group": null,
+   "challenge": null,
+   "classification_rationale": null,
+   "category": "export",
+   "subject": "Drill-down table exports only category level",
+   "description": "Exporting a drill-down table returns only the category rows, not the products underneath them.",
+   "resolution_notes": "Drill-down tables export the currently displayed level by default. Enabled 'Include all levels' on the widget, which adds a level column. Confirmed the export contained both category and product rows.",
+   "tags": [
+    "drill-down",
+    "table-widget",
+    "export-levels"
+   ],
+   "created_at": "2026-10-01",
+   "status": "resolved"
+  }
+ ]
+}

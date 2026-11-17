@@ -1,0 +1,655 @@
+{
+  "category": "billing",
+  "issue_families": [
+    {"family_id": "billing-f01", "name": "Seat counting and reconciliation", "summary": "The billed seat quantity differs from the customer's own count because of how seats are counted: pending invitations, viewer accounts on plans where viewers are billable, automation users, or workspaces not linked to the billing account. Symptoms are invoices or quotes with more or fewer seats than active users.", "boundary_note": "The dispute is about the quantity charged, not about what users can access, so it is billing rather than perm."},
+    {"family_id": "billing-f02", "name": "Mid-cycle proration", "summary": "Prorated amounts for upgrades, seat additions or add-ons are computed from the wrong start date, the wrong price tier or across a billing-timezone boundary, or an expected credit for a reduction does not appear.", "boundary_note": "Concerns how charges are calculated and when they are invoiced; no data, display or access defect is involved."},
+    {"family_id": "billing-f03", "name": "Plan changes, pauses and cancellations", "summary": "Upgrades, downgrades, pauses or cancellations do not take effect, take effect at the wrong time, apply to the wrong workspace, or are blocked by a pending condition. Symptoms include billing on the old plan, features lost early or an unwanted renewal.", "boundary_note": "Feature changes here are driven by subscription state rather than roles or settings, so billing rather than perm or workspace_admin."},
+    {"family_id": "billing-f04", "name": "Discounts, coupons and negotiated pricing", "summary": "Discounts missing, expired early, applied to the wrong lines or applied without entitlement, often because the discount was stored on one subscription term instead of the account.", "boundary_note": "Pricing adjustments on invoices and at checkout are billing by definition."},
+    {"family_id": "billing-f05", "name": "Payment method updates and card authorization", "summary": "Adding or replacing a payment method fails or silently does not stick because of strong customer authentication challenges, issuer restrictions or unsupported payment types.", "boundary_note": "Concerns the payment method on the subscription; browser or issuer behaviour is only the trigger, so it is not connectivity or auth."},
+    {"family_id": "billing-f06", "name": "Failed payments, dunning and account holds", "summary": "Accounts placed on hold, reminders missed, or holds not lifted because of failed renewals, outdated billing contacts, unmatched bank transfers or wrong payment terms.", "boundary_note": "Users may lose edit capability, but the cause is the payment state, so billing rather than perm."},
+    {"family_id": "billing-f07", "name": "Charges that look duplicated", "summary": "Two charges that appear to be duplicates but come from card verification authorizations, separate subscriptions, overlapping billing periods after a cycle switch, duplicate orders or a double-submitted payment page.", "boundary_note": "Charge disputes are billing; each case has a cause distinct from a single subscription being charged twice by an automatic payment retry."},
+    {"family_id": "billing-f08", "name": "Sales tax and VAT", "summary": "Tax applied when it should not be, or missing when it should be, because of VAT ID validation, the address used to determine tax jurisdiction, exemption certificates not attached, or the billing entity on the account.", "boundary_note": "Tax on our invoices is a billing matter; it does not involve tax values inside the customer's analytics data."},
+    {"family_id": "billing-f09", "name": "Invoice documents and invoice delivery", "summary": "Invoices missing required references, carrying outdated legal details, not reaching the right contacts, not downloadable, or not present because the purchase was made through a marketplace.", "boundary_note": "Invoice notifications and documents are billing, not scheduled report delivery (export) or workspace identity (workspace_admin)."},
+    {"family_id": "billing-f10", "name": "Billing currency and monetary formatting", "summary": "Invoices or credit notes in the wrong currency, differences between checkout estimates and card charges, and rounding or minor-unit formatting errors on invoice documents.", "boundary_note": "Currency on prices and invoices is billing; currency of values in analytics data is data_quality."},
+    {"family_id": "billing-f11", "name": "Usage meters and add-on charges", "summary": "Overage or add-on charges caused by usage meters counting retained, soft-deleted or failed items, or by add-ons triggered automatically or left enabled on another workspace.", "boundary_note": "Meters may reference connectors or API traffic, but the dispute is the charge, so billing rather than sync or api."},
+    {"family_id": "billing-f12", "name": "Trials, renewals and price protection", "summary": "Trial conversion surprises or failures, extensions not applied, renewal notices for cancelled workspaces, and renewals or quotes reverting to list price when a contracted price was stored for one term only.", "boundary_note": "Subscription lifecycle events and renewal pricing are billing."},
+    {"family_id": "billing-f13", "name": "Refunds, credit notes and account balances", "summary": "Credits not applied or applied to the wrong invoice or workspace, refunds delayed or bouncing, prepaid credits expiring early, and unexpected refunds from bulk corrections.", "boundary_note": "Money returned to the customer or held on the account is billing."}
+  ],
+  "related_groups": [
+    {"group_id": "billing-g01", "family_id": "billing-f01", "shared_root_cause": "After a seat-counting rule change, users in 'invited' status were counted as billable seats, so unaccepted invitations inflated seat totals."},
+    {"group_id": "billing-g02", "family_id": "billing-f02", "shared_root_cause": "Mid-cycle seat additions, upgrades and add-ons were prorated from the start of the billing period instead of the date of the change."},
+    {"group_id": "billing-g03", "family_id": "billing-f04", "shared_root_cause": "Discounts were attached to a single subscription term rather than to the customer account, so renewal terms were generated without them."},
+    {"group_id": "billing-g04", "family_id": "billing-f05", "shared_root_cause": "The card issuer's 3-D Secure challenge opened in a popup that the browser blocked, so the new card was never verified or attached."},
+    {"group_id": "billing-g05", "family_id": "billing-f07", "shared_root_cause": "A small verification authorization placed when a card is saved looked to customers like an extra charge, although it is never captured."},
+    {"group_id": "billing-g06", "family_id": "billing-f08", "shared_root_cause": "VAT IDs entered without the country prefix or with spaces or dots failed validation, so VAT was charged instead of reverse charge."},
+    {"group_id": "billing-g07", "family_id": "billing-f11", "shared_root_cause": "The data-rows usage meter kept counting rows from disconnected, archived or soft-deleted sources during their retention window."},
+    {"group_id": "billing-g08", "family_id": "billing-f12", "shared_root_cause": "Contracted prices were stored as overrides covering only the first term, so renewal invoices and quotes reverted to list price."},
+    {"group_id": "billing-g09", "family_id": "billing-f06", "shared_root_cause": "The billing contact used for dunning emails still pointed to a departed employee's mailbox, so payment failure reminders were never seen."}
+  ],
+  "tickets": [
+    {
+      "key": "billing-001", "family_id": "billing-f01", "related_group": "billing-g01", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal quote includes people who never joined",
+      "description": "The customer's finance lead says the annual renewal quote lists 42 seats, but only 35 people have ever signed in. The difference matches a group of colleagues invited during a pilot who never accepted.",
+      "resolution_notes": "A seat-counting rule change in the billing service had started treating users in 'invited' status as billable, so the seven unaccepted invitations were included in the quote. Revoked the stale invitations at the admin's request, regenerated the quote and logged the counting defect with the billing team. Confirmed the revised quote showed 35 seats.",
+      "tags": ["seat-count", "pending-invitations", "renewal-quote"], "created_at": "2025-03-14", "status": "resolved"
+    },
+    {
+      "key": "billing-002", "family_id": "billing-f01", "related_group": "billing-g01", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Monthly charge rose by four seats with no new hires",
+      "description": "Agent summary: Growth plan invoice went from 20 to 24 seats. Admin says nobody new uses the product and the member list shows 20 active people.",
+      "resolution_notes": "The four extra seats were invitations sent to a shared store-operations mailbox that nobody had accepted; since the recent counting change, invited users were billed as seats. Cancelled the invitations, credited four seats for the period and linked the account to the open counting defect. The next draft invoice showed 20 seats.",
+      "tags": ["seat-count", "pending-invitations", "credit"], "created_at": "2025-06-02", "status": "resolved"
+    },
+    {
+      "key": "billing-003", "family_id": "billing-f01", "related_group": "billing-g01", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Billing Center seat counter higher than Users page",
+      "description": "Customer compared the Users page filtered to Active with the seat counter in Billing Center and found 11 more seats billed. They asked us to list exactly who they are paying for.",
+      "resolution_notes": "The Billing Center counter includes users whose invitation is still pending, which the Active filter on the Users page hides, and pending invites had become billable after a counting rule change. Sent the admin the list of pending invitations; they withdrew nine, and the release that excluded unaccepted invitations from billing removed the remaining two later that month. Verified the counter matched the Active user count after the release.",
+      "tags": ["seat-counter", "pending-invitations", "billing-center"], "created_at": "2025-07-17", "status": "resolved"
+    },
+    {
+      "key": "billing-004", "family_id": "billing-f01", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": "User roles are involved, but the question is what the customer is charged for, so it belongs to billing rather than perm.",
+      "category": "billing",
+      "subject": "Disputing seats charged for viewer accounts",
+      "description": "Customer believed viewer-only users are free and is disputing 15 extra seats on the latest invoice, all of them store managers with view access.",
+      "resolution_notes": "Free viewer accounts are a Business plan feature; on the customer's Starter plan every named user, including viewers, occupies a paid seat, so the invoice was correct. Shared the plan comparison, and the admin chose to remove six store managers who had not signed in for 90 days. Confirmed the next invoice draft listed six fewer seats.",
+      "tags": ["seat-count", "viewer-seats", "plan-terms"], "created_at": "2025-02-07", "status": "resolved"
+    },
+    {
+      "key": "billing-005", "family_id": "billing-f01", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Invoices bill fewer seats than people using the product",
+      "description": "The customer's controller is reporting under-billing ahead of an audit: around 60 people use the workspace daily, yet the last three invoices charged for 48 seats.",
+      "resolution_notes": "Twelve users had been provisioned through the customer's identity provider into a child workspace that was never linked to the parent billing account, so they were not counted. With the controller's approval, linked the child workspace to the parent subscription and issued a true-up invoice for the agreed period. Confirmed the billing account now reports 60 seats.",
+      "tags": ["seat-count", "under-billing", "child-workspace", "true-up"], "created_at": "2026-07-09", "status": "resolved"
+    },
+    {
+      "key": "billing-006", "family_id": "billing-f01", "related_group": null, "challenge": null, "classification_rationale": "The remedy uses a service credential, but the question was whether an account consumes a paid seat, so it is billing rather than api.",
+      "category": "billing",
+      "subject": "Automation user counted as a paid seat",
+      "description": "The admin created a user named reporting-bot for a scheduled script and noticed it takes up a seat. They asked whether non-human accounts should be billed at all.",
+      "resolution_notes": "Users created on the Users page are named seats regardless of who operates them, while the plan's service credentials are not billed. Helped the admin create a read-only service credential, move the script to it and deactivate the reporting-bot user. Confirmed the seat counter dropped by one.",
+      "tags": ["seat-count", "service-account"], "created_at": "2025-11-26", "status": "resolved"
+    },
+    {
+      "key": "billing-007", "family_id": "billing-f02", "related_group": "billing-g02", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Two seats added late in the month billed almost a full month",
+      "description": "Customer added two seats on the 24th and the prorated charge for each was close to a full month's price instead of about a week.",
+      "resolution_notes": "The proration routine used the start of the billing cycle, rather than the time of the change, as the start date for mid-cycle seat additions. Credited the overcharge for both seats, and the routine was corrected to use the change timestamp. Recalculated lines covered 7 days per seat.",
+      "tags": ["proration", "seat-addition", "overcharge"], "created_at": "2025-04-28", "status": "resolved"
+    },
+    {
+      "key": "billing-008", "family_id": "billing-f02", "related_group": "billing-g02", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Mid-June upgrade invoiced from the 1st",
+      "description": "Paraphrasing the finance contact: 'We moved from Starter to Growth on 18 June, but the upgrade line on our invoice covers 1 to 30 June.'",
+      "resolution_notes": "The upgrade was prorated from the beginning of the billing period instead of the upgrade date, adding 17 days of Growth pricing. Issued a credit note for the overlapping days. After the proration fix was deployed, a re-rated preview showed the upgrade line covering 18 to 30 June.",
+      "tags": ["proration", "plan-upgrade", "credit-note"], "created_at": "2025-07-03", "status": "resolved"
+    },
+    {
+      "key": "billing-009", "family_id": "billing-f02", "related_group": "billing-g02", "challenge": "workaround_vs_permanent_fix", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Need add-on activations without another proration overcharge",
+      "description": "The customer is about to enable the Forecasting add-on on three more workspaces and asked how to avoid being overcharged like on their previous mid-cycle addition.",
+      "resolution_notes": "The permanent fix for mid-cycle additions being prorated from the cycle start had not shipped yet. As a workaround, enabled the add-on immediately as a complimentary period and set the paid start to the next cycle boundary; the proration fix was scheduled for the following billing release. Confirmed each activation produced no overlapping charge on the draft invoice.",
+      "tags": ["proration", "add-on", "workaround"], "created_at": "2025-05-13", "status": "resolved"
+    },
+    {
+      "key": "billing-010", "family_id": "billing-f02", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "No credit after removing ten seats mid-term",
+      "description": "Customer removed 10 seats halfway through their annual term and expected a prorated credit on the next invoice, but nothing appeared.",
+      "resolution_notes": "On annual contracts, seat reductions take effect at renewal rather than producing mid-term credits, as set out in the customer's order form. Shared the clause with the admin and scheduled the reduction for the renewal date. Verified the renewal preview showed the lower seat quantity.",
+      "tags": ["seat-reduction", "annual-contract", "proration"], "created_at": "2026-03-11", "status": "resolved"
+    },
+    {
+      "key": "billing-011", "family_id": "billing-f02", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Added seats prorated at new list price, not grandfathered rate",
+      "description": "After the spring price change, a customer's newly added seats were prorated at the new per-seat price while all their existing seats remain on the grandfathered rate.",
+      "resolution_notes": "The proration calculation looked up the current list price instead of the subscription's grandfathered price tier. Re-rated the added seats at the grandfathered price and credited the difference. Confirmed the corrected line matched the existing per-seat rate.",
+      "tags": ["proration", "grandfathered-pricing", "seat-addition"], "created_at": "2025-05-21", "status": "resolved"
+    },
+    {
+      "key": "billing-012", "family_id": "billing-f02", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Upgrade proration showed up an invoice later than expected",
+      "description": "The customer's accounts payable team says an upgrade made on the evening of 30 April appeared on the June invoice instead of May's, which breaks their monthly accrual.",
+      "resolution_notes": "Subscriptions bill on UTC, and the upgrade at 23:40 local time was already 1 May in UTC, so it fell into the next period and was invoiced in June. The amount itself was correct; we sent a statement explaining the timing for their auditors and recorded the UTC billing anchor in the account's billing profile. The customer confirmed this settled their accrual question.",
+      "tags": ["proration", "billing-timezone", "invoice-timing"], "created_at": "2025-06-04", "status": "resolved"
+    },
+    {
+      "key": "billing-013", "family_id": "billing-f03", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Subscription renewed after we clicked Cancel",
+      "description": "Customer says they clicked Cancel in Plan & Billing two weeks before renewal, got no confirmation, and were then charged for another year.",
+      "resolution_notes": "Cancellation requires a confirmation step on a second screen, and the audit trail showed the customer opened the flow but closed the tab before confirming. Processed a full refund within the renewal refund window and cancelled the subscription as requested. Confirmed the refund was issued and the subscription status reads Cancelled.",
+      "tags": ["cancellation", "auto-renewal", "refund"], "created_at": "2025-01-23", "status": "resolved"
+    },
+    {
+      "key": "billing-014", "family_id": "billing-f03", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": "Features vanished because of subscription timing rather than any role or access change, so it is billing rather than perm.",
+      "category": "billing",
+      "subject": "Scheduled downgrade removed features immediately",
+      "description": "The admin meant to downgrade from Business to Growth at renewal, but the Forecasting module disappeared the same day even though Business was paid through month-end.",
+      "resolution_notes": "The downgrade dialog defaulted to 'Apply now' and the admin had not switched it to 'Apply at renewal'. Restored Business for the rest of the paid period at no cost and rescheduled the downgrade for the renewal date. Confirmed Forecasting was available again and the scheduled change appeared in Plan & Billing.",
+      "tags": ["downgrade", "plan-change", "feature-loss"], "created_at": "2026-02-17", "status": "resolved"
+    },
+    {
+      "key": "billing-015", "family_id": "billing-f03", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Upgrade landed on the wrong regional workspace",
+      "description": "A retailer with separate EU and US workspaces upgraded what they thought was the US workspace; the EU one was upgraded and charged instead.",
+      "resolution_notes": "Both workspaces had the same display name and the plan picker did not show their regions. Applied the upgrade to the US workspace, reversed the EU upgrade with a credit, and suggested the admin give each workspace a distinct name. Verified the US workspace showed Growth and the EU workspace was back on Starter.",
+      "tags": ["plan-upgrade", "multi-workspace", "credit"], "created_at": "2025-09-30", "status": "resolved"
+    },
+    {
+      "key": "billing-016", "family_id": "billing-f03", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Plan badge and invoice still say Business after downgrade request",
+      "description": "Customer asked to downgrade on 3 March. The April invoice was at the Business rate and the workspace still shows the Business badge.",
+      "resolution_notes": "The downgrade was held in a pending state because the workspace still used two premium connectors that Growth does not include, and the warning was only visible to the admin who submitted the request. Helped the admin replace the premium connectors, after which the downgrade completed, and credited April's price difference because the request date was documented. Confirmed the May draft invoice used Growth pricing.",
+      "tags": ["downgrade", "pending-plan-change", "credit"], "created_at": "2026-04-08", "status": "resolved"
+    },
+    {
+      "key": "billing-017", "family_id": "billing-f03", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Paused subscription still showing a monthly fee",
+      "description": "A seasonal garden retailer paused their subscription for the winter and was surprised that a smaller charge kept appearing each month.",
+      "resolution_notes": "Paused subscriptions keep a data retention fee of 10% of the plan price, disclosed only in a footnote of the pause dialog, so the charge was valid. Explained the fee, applied a one-time courtesy credit for the first paused month and raised a request to show the fee on the confirmation step. Confirmed the credit appeared on the next statement.",
+      "tags": ["subscription-pause", "retention-fee", "courtesy-credit"], "created_at": "2026-01-08", "status": "resolved"
+    },
+    {
+      "key": "billing-018", "family_id": "billing-f03", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "The block comes from the contract's billing-owner approval rather than a workspace role, so it is billing rather than perm.",
+      "category": "billing",
+      "subject": "Admin told 'Plan change requires billing owner approval'",
+      "description": "A workspace admin trying to upgrade gets 'Plan change requires billing owner approval' and assumes their admin role is broken.",
+      "resolution_notes": "Invoiced contract accounts require plan changes to be approved by the named billing owner, and that person had left the company. The customer's authorised signatory nominated a new billing owner through our verification process, who then approved the upgrade. Confirmed the plan changed and the order confirmation went to the new billing owner.",
+      "tags": ["plan-upgrade", "billing-owner", "approval"], "created_at": "2025-10-15", "status": "resolved"
+    },
+    {
+      "key": "billing-019", "family_id": "billing-f04", "related_group": "billing-g03", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Nonprofit discount missing after renewal",
+      "description": "A charity-run chain of secondhand shops renewed its annual plan, and the invoice no longer includes the 30% nonprofit discount it has had for two years.",
+      "resolution_notes": "The discount was attached to the original subscription record instead of the customer account, and the renewal created a new subscription without it. Reissued the renewal invoice with the discount and moved the discount to the account level so future renewals inherit it. Confirmed the corrected invoice showed the 30% reduction.",
+      "tags": ["nonprofit-discount", "renewal", "subscription-record"], "created_at": "2025-02-26", "status": "resolved"
+    },
+    {
+      "key": "billing-020", "family_id": "billing-f04", "related_group": "billing-g03", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal confirmation quotes standard rate for campus store",
+      "description": "A university bookstore received its renewal confirmation email at the standard price; the education pricing it has always had is gone.",
+      "resolution_notes": "Education pricing was stored only on the expired subscription term, so the newly generated term fell back to standard rates. Applied the education discount at account level, voided the standard-rate invoice and re-sent the renewal confirmation. The customer confirmed the new confirmation matched last year's price.",
+      "tags": ["education-discount", "renewal", "pricing"], "created_at": "2025-08-28", "status": "resolved"
+    },
+    {
+      "key": "billing-021", "family_id": "billing-f04", "related_group": "billing-g03", "challenge": "workaround_vs_permanent_fix", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Year-two invoice missing multi-year commitment discount",
+      "description": "Procurement flagged that the 20% discount for their three-year commitment appears on the first year's invoice but not on year two's.",
+      "resolution_notes": "Year two was generated as a new subscription term, and the commitment discount, held on the first term's record, did not carry over. Because migrating contract discounts to account level was still in progress, applied a manual credit equal to the discount as an interim measure; the permanent migration was scheduled for the next billing release. Confirmed the net amount due matched the order form.",
+      "tags": ["multi-year-discount", "renewal", "manual-credit"], "created_at": "2026-05-19", "status": "resolved"
+    },
+    {
+      "key": "billing-022", "family_id": "billing-f04", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Promo code from trade show flyer says expired",
+      "description": "Checkout rejects a promotional code with 'This code has expired', although the flyer handed out at a retail trade show says it is valid until the end of the quarter.",
+      "resolution_notes": "The promotion's end date had been configured as the first day of the quarter's last month rather than its final day. Corrected the expiry in the promotions configuration, after which the customer applied the code. Confirmed the checkout total showed the 10% reduction.",
+      "tags": ["promo-code", "coupon-expiry", "checkout"], "created_at": "2025-12-03", "status": "resolved"
+    },
+    {
+      "key": "billing-023", "family_id": "billing-f04", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Invoice includes a partner discount we never negotiated",
+      "description": "The customer's finance team spotted a 'Partner 25%' discount on their invoice and asked us to correct it before they pay, to avoid an audit finding.",
+      "resolution_notes": "During an account merge, a partner discount from a reseller's demo account had been copied onto the customer's subscription. Removed the discount, reissued the open invoice at the contracted price and checked other merged accounts for the same copy error. Confirmed the reissued invoice had no partner discount line.",
+      "tags": ["discount", "account-merge", "invoice-correction"], "created_at": "2026-08-12", "status": "resolved"
+    },
+    {
+      "key": "billing-024", "family_id": "billing-f04", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Annual billing discount skipped the Connector Pack add-on",
+      "description": "Customer switched to annual billing and the 15% discount applies to the platform fee but not to the Connector Pack add-on line, though their order form covers both.",
+      "resolution_notes": "Add-ons purchased before the last price book update were excluded from the annual discount rule by default. Applied the discount to the add-on line as specified in the order form and updated the subscription so it persists at renewal. Confirmed the reissued invoice discounted both lines.",
+      "tags": ["annual-discount", "add-on", "order-form"], "created_at": "2026-10-06", "status": "resolved"
+    },
+    {
+      "key": "billing-025", "family_id": "billing-f05", "related_group": "billing-g04", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Card update spins, then 'Verification incomplete'",
+      "description": "When saving a new company card, the form spins for about a minute and then shows 'Verification incomplete. Your card was not saved.'",
+      "resolution_notes": "The issuer required a 3-D Secure challenge, which the payment form opened in a popup that the customer's browser blocked without any notice. Had the customer allow popups for the billing page and retry; the bank challenge appeared and the card saved. Confirmed the new card shows as the default payment method.",
+      "tags": ["payment-method", "3d-secure", "popup-blocked"], "created_at": "2025-01-15", "status": "resolved"
+    },
+    {
+      "key": "billing-026", "family_id": "billing-f05", "related_group": "billing-g04", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Bank approval prompt never appears when adding card",
+      "description": "Admin says their bank normally asks for approval in its mobile app for online card use, but adding the card on our billing page triggers no prompt and the old card stays on file.",
+      "resolution_notes": "The strong customer authentication step launched in a popup, and the customer's managed browser policy blocks popups. Since their IT team could not change the policy, we sent a hosted payment-method link that runs the authentication in the same tab. The approval prompt appeared, and the card was saved and verified.",
+      "tags": ["payment-method", "strong-customer-authentication", "browser-policy"], "created_at": "2025-07-22", "status": "resolved"
+    },
+    {
+      "key": "billing-027", "family_id": "billing-f05", "related_group": "billing-g04", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal failed despite updating card the day before",
+      "description": "Customer replaced the card on file the day before renewal, but the renewal still failed and the decline notice shows the old card's last four digits.",
+      "resolution_notes": "The update never completed: the issuer's 3-D Secure challenge opened in a popup that was blocked, so the new card was never attached and the renewal fell back to the previous, expired card. The customer redid the update with popups allowed for the billing page, and we retried the renewal charge. Confirmed the payment succeeded and the subscription stayed active.",
+      "tags": ["renewal-payment", "3d-secure", "payment-method"], "created_at": "2026-03-30", "status": "resolved"
+    },
+    {
+      "key": "billing-028", "family_id": "billing-f05", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Purchasing card declined with 'do not honor'",
+      "description": "The customer's corporate purchasing card is declined every time with 'Card declined - do not honor', although the same card works for other online purchases.",
+      "resolution_notes": "The purchasing card program blocked the merchant category used for software subscriptions. The customer's card program administrator added that category to the card's allowed list, after which the charge succeeded. Confirmed the card is now the default method and the open invoice is paid.",
+      "tags": ["card-decline", "purchasing-card", "merchant-category"], "created_at": "2025-04-09", "status": "resolved"
+    },
+    {
+      "key": "billing-029", "family_id": "billing-f05", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Wants to pay annual invoices by bank transfer",
+      "description": "Customer wants to stop paying by card and settle annual invoices by bank transfer, but Plan & Billing only shows card fields.",
+      "resolution_notes": "Bank transfer is offered only with invoiced billing, which requires an annual plan above the minimum contract value; the customer qualified. Switched the account to invoiced billing on 30-day terms and removed the card at their request. Confirmed the next invoice was issued with remittance instructions and no card on file.",
+      "tags": ["payment-method", "bank-transfer", "invoiced-billing"], "created_at": "2026-06-16", "status": "resolved"
+    },
+    {
+      "key": "billing-030", "family_id": "billing-f05", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Card on file ends in digits nobody recognises",
+      "description": "An admin opened Plan & Billing and found a card ending in four digits that nobody on the current finance team recognises.",
+      "resolution_notes": "The audit log showed the card had been added eight months earlier by the previous billing contact and was a company card issued in that person's name. Helped the admin add the current company card and remove the old one. Confirmed only the new card remains and the change is recorded in the audit log.",
+      "tags": ["payment-method", "audit-log", "billing-contact"], "created_at": "2025-12-29", "status": "resolved"
+    },
+    {
+      "key": "billing-031", "family_id": "billing-f06", "related_group": "billing-g09", "challenge": "same_symptom_different_cause", "classification_rationale": "Users lost the ability to edit, but the cause was a payment hold rather than role configuration, so it is billing rather than perm.",
+      "category": "billing",
+      "subject": "Workspace went read-only with 'payment overdue' banner",
+      "description": "Store managers suddenly cannot create or edit dashboards and see a banner reading 'Account on hold - payment overdue'. The admin says nobody received any payment failure emails.",
+      "resolution_notes": "The renewal charge had failed three times and every dunning email went to the billing contact address of an employee who had left. The customer paid the overdue invoice, we lifted the hold, and the admin changed the billing contact to a shared finance mailbox. Confirmed editing worked again and the banner cleared.",
+      "tags": ["account-hold", "dunning", "billing-contact"], "created_at": "2025-05-06", "status": "resolved"
+    },
+    {
+      "key": "billing-032", "family_id": "billing-f06", "related_group": "billing-g09", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Overdue reminders bouncing off a departed colleague's address",
+      "description": "The customer only learned their invoice was 45 days overdue when their account manager phoned; our reminder emails had been going to an address that bounces.",
+      "resolution_notes": "The billing contact is stored separately from workspace admins and still pointed at a deactivated mailbox, and bounces on dunning emails were not surfaced to anyone. Updated the billing contact to the finance team's shared address and added a secondary contact. Confirmed the next reminder was delivered and the invoice was paid the same day.",
+      "tags": ["dunning", "billing-contact", "email-bounce"], "created_at": "2026-09-02", "status": "resolved"
+    },
+    {
+      "key": "billing-033", "family_id": "billing-f06", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Still suspended three days after paying by transfer",
+      "description": "Customer paid the overdue balance by bank transfer three days ago, but the workspace remains suspended.",
+      "resolution_notes": "Transfers are matched to invoices using the invoice number in the payment reference, and this one carried only the company name, so it sat unallocated. Matched the payment to the invoice manually, which lifted the suspension, and asked the customer to quote invoice numbers in future references. Confirmed the account returned to Active.",
+      "tags": ["account-suspension", "bank-transfer", "payment-matching"], "created_at": "2025-03-27", "status": "resolved"
+    },
+    {
+      "key": "billing-034", "family_id": "billing-f06", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Account put on hold before contract payment terms ended",
+      "description": "The contract specifies net 30 payment terms, but the account went on hold 14 days after the invoice date.",
+      "resolution_notes": "The account had been created with self-serve dunning settings, which use a 14-day grace period, and was never switched to contract terms when the order form was signed. Lifted the hold and set payment terms to net 30. Confirmed the dunning schedule now places the first reminder at day 30.",
+      "tags": ["payment-terms", "account-hold", "dunning-schedule"], "created_at": "2026-02-24", "status": "resolved"
+    },
+    {
+      "key": "billing-035", "family_id": "billing-f06", "related_group": null, "challenge": "workaround_vs_permanent_fix", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Repeated payment retries froze corporate card",
+      "description": "The customer's bank froze their corporate card after our system retried the same failed renewal payment six times in two days.",
+      "resolution_notes": "The retry schedule did not back off for the 'insufficient funds' decline code, and the repeated attempts tripped the issuer's fraud controls. As an immediate workaround we paused automatic retries on the account and collected payment through a one-time payment link once the card was unfrozen; a permanent change to vary retry timing by decline code was scheduled. Confirmed the invoice was paid and no further retries were queued.",
+      "tags": ["payment-retry", "card-decline", "fraud-hold"], "created_at": "2025-10-28", "status": "resolved"
+    },
+    {
+      "key": "billing-036", "family_id": "billing-f06", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": null,
+      "category": "billing",
+      "subject": "'Payment failed' email for an invoice paid against a PO",
+      "description": "Customer received a payment failure email for an invoice their accounts payable team had already paid by transfer against a purchase order.",
+      "resolution_notes": "The account was on invoiced terms but still held an old card, and the system tried that card before the transfer had been allocated, which generated the failure email. Removed the stale card, confirmed the invoice shows as paid by transfer and voided the failed charge attempt. Verified that no further dunning emails were scheduled.",
+      "tags": ["payment-failure-notice", "purchase-order", "stale-card"], "created_at": "2026-11-04", "status": "resolved"
+    },
+    {
+      "key": "billing-037", "family_id": "billing-f07", "related_group": "billing-g05", "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Extra pending charge appeared right after changing card",
+      "description": "Immediately after replacing the card on file, the admin saw a pending 1.00 charge in their banking app next to this month's subscription payment and thought they were being billed twice.",
+      "resolution_notes": "The 1.00 item was the verification authorization placed when a new card is saved; it is never captured, and the issuer releases it, usually within a few days. Showed the admin the voided authorization in our payment records and shared its reference for their bank. The customer later confirmed it had dropped off the statement.",
+      "tags": ["card-verification", "pending-authorization", "payment-method"], "created_at": "2025-06-25", "status": "resolved"
+    },
+    {
+      "key": "billing-038", "family_id": "billing-f07", "related_group": "billing-g05", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Unknown small transaction from us on a new card",
+      "description": "The finance lead found a small transaction from our company on a newly issued card that has not been used for any renewal yet, and suspects fraud.",
+      "resolution_notes": "It was the verification authorization made when the card was added on the billing page; it is reversed automatically and never settles. The timing matched the card change in the audit log, and we sent the void record to the customer. Their bank confirmed the authorization had been released.",
+      "tags": ["card-verification", "fraud-concern", "authorization-hold"], "created_at": "2026-04-21", "status": "resolved"
+    },
+    {
+      "key": "billing-039", "family_id": "billing-f07", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Two different charges on the same day for two brands",
+      "description": "Customer sees two charges of different amounts from us on the same day and believes they were double charged; they run two brands but thought they had one subscription.",
+      "resolution_notes": "Each brand had its own workspace with its own subscription on the same card, and both renewed on the same date. Explained the two subscriptions and, at the customer's request, placed both workspaces under one billing account with a combined invoice from the next cycle. Confirmed the next-cycle preview showed a single charge.",
+      "tags": ["multiple-subscriptions", "consolidated-billing", "double-charge-concern"], "created_at": "2025-01-31", "status": "resolved"
+    },
+    {
+      "key": "billing-040", "family_id": "billing-f07", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Charged for August monthly fee and a full annual term",
+      "description": "Customer switched from monthly to annual billing on 10 August and was charged the whole August monthly fee plus the annual amount starting 10 August.",
+      "resolution_notes": "The switch was made from the legacy billing page, which created a new annual subscription instead of converting the monthly one, so the unused monthly days were never credited. Credited the 21 unused days and closed the orphaned monthly subscription. Confirmed only the annual subscription remains active.",
+      "tags": ["billing-cycle-switch", "overlapping-subscription", "credit"], "created_at": "2025-08-29", "status": "resolved"
+    },
+    {
+      "key": "billing-041", "family_id": "billing-f07", "related_group": null, "challenge": "related_symptom_different_product", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Onboarding services package invoiced twice",
+      "description": "Customer received two invoices for the one-time onboarding services package: a line on the subscription invoice and a separate services invoice.",
+      "resolution_notes": "The account team had added the package both to the subscription order form and to a standalone services order. Voided the standalone services invoice. Confirmed the subscription invoice carried a single onboarding line and the customer's balance was correct.",
+      "tags": ["professional-services", "duplicate-invoice", "onboarding-package"], "created_at": "2026-07-28", "status": "resolved"
+    },
+    {
+      "key": "billing-042", "family_id": "billing-f07", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Double payment after clicking Pay twice on overdue invoice",
+      "description": "The admin paid an overdue invoice from the payment page; it looked frozen, so they clicked Pay again, and both payments were taken.",
+      "resolution_notes": "The payment page did not disable the button while waiting for the processor's response, so two submissions were accepted for the same open invoice. Refunded the second payment, and the page was changed to lock an invoice while a payment is in progress. Confirmed the invoice shows one payment and sent the refund reference to the customer.",
+      "tags": ["double-submission", "payment-page", "refund"], "created_at": "2025-11-11", "status": "resolved"
+    },
+    {
+      "key": "billing-043", "family_id": "billing-f08", "related_group": "billing-g06", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Dutch customer charged VAT despite VAT number",
+      "description": "A customer based in the Netherlands entered their VAT number at signup, but the invoice still adds 21% VAT.",
+      "resolution_notes": "The number had been entered without the 'NL' country prefix, so validation failed silently and the account was taxed as a non-business buyer. Corrected the format, revalidated the ID and reissued the invoice under reverse charge. Confirmed the reissued invoice shows zero VAT and the reverse-charge note.",
+      "tags": ["vat", "vat-id-validation", "reverse-charge"], "created_at": "2025-02-18", "status": "resolved"
+    },
+    {
+      "key": "billing-044", "family_id": "billing-f08", "related_group": "billing-g06", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Accountant asks for reverse-charge wording on invoices",
+      "description": "A German retailer's accountant flagged that our invoices add VAT and lack the reverse-charge statement their bookkeeping requires.",
+      "resolution_notes": "The VAT ID stored on the account contained spaces copied from the customer's letterhead; our validator rejected it and the account defaulted to charging VAT. Normalised the ID, revalidated it and reissued the last two invoices. Confirmed both reissued invoices carry the reverse-charge statement with no VAT.",
+      "tags": ["vat", "reverse-charge", "invoice-reissue"], "created_at": "2025-09-09", "status": "resolved"
+    },
+    {
+      "key": "billing-045", "family_id": "billing-f08", "related_group": "billing-g06", "challenge": "workaround_vs_permanent_fix", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Checkout says 'Invalid VAT number' for a valid Belgian ID",
+      "description": "A new customer cannot complete checkout without being charged VAT, because the VAT field shows 'Invalid VAT number' although the number is correct.",
+      "resolution_notes": "The checkout validator rejected the dots the customer typed between digit groups. As a workaround, support stored the ID on the account in normalised form so checkout could proceed under reverse charge; accepting common separators in the validator was scheduled as the permanent fix. Confirmed the order completed with no VAT charged.",
+      "tags": ["vat-id-validation", "checkout", "workaround"], "created_at": "2026-05-05", "status": "resolved"
+    },
+    {
+      "key": "billing-046", "family_id": "billing-f08", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Sales tax still uses old state after headquarters move",
+      "description": "A US customer moved its headquarters to another state, but the latest invoice is still taxed at the previous state's rate.",
+      "resolution_notes": "The customer had updated the billing address, but tax is calculated from the separate service address, which still pointed to the old office. Updated the service address, recalculated tax and reissued the invoice. Confirmed the reissued invoice used the new state's rate.",
+      "tags": ["sales-tax", "tax-jurisdiction", "service-address"], "created_at": "2026-01-27", "status": "resolved"
+    },
+    {
+      "key": "billing-047", "family_id": "billing-f08", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Tax-exempt museum shop still charged sales tax",
+      "description": "A nonprofit museum shop sent its tax-exemption certificate months ago, but every invoice still includes sales tax.",
+      "resolution_notes": "The certificate had been attached to a support conversation rather than to the billing account's tax profile, so the exemption was never applied. Added the certificate to the tax profile and refunded the tax on the four affected invoices. Confirmed the next draft invoice shows zero tax.",
+      "tags": ["tax-exemption", "sales-tax", "refund"], "created_at": "2025-12-16", "status": "resolved"
+    },
+    {
+      "key": "billing-048", "family_id": "billing-f08", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "UK customer's invoices show no VAT but should",
+      "description": "A UK-based customer says its invoices show no VAT at all; their accountant expects domestic VAT and wants compliant invoices.",
+      "resolution_notes": "The account had been assigned to our EU billing entity, which applied reverse charge because the customer had supplied a VAT number. Moved the account to the UK billing entity and reissued the affected invoices with UK VAT. Confirmed the accountant accepted the reissued invoices.",
+      "tags": ["vat", "billing-entity", "invoice-reissue"], "created_at": "2026-08-25", "status": "resolved"
+    },
+    {
+      "key": "billing-049", "family_id": "billing-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Invoices rejected for missing PO number",
+      "description": "Accounts payable keeps rejecting our invoices because they lack the purchase order number required on every supplier invoice.",
+      "resolution_notes": "The PO number was on the signed order form but had never been entered in the account's invoice reference field. Added it and reissued the current invoice. Confirmed the PO appears in the invoice header.",
+      "tags": ["purchase-order", "invoice-reference", "accounts-payable"], "created_at": "2025-04-16", "status": "resolved"
+    },
+    {
+      "key": "billing-050", "family_id": "billing-f09", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "These are invoice notifications rather than scheduled report deliveries, so the ticket belongs to billing, not export.",
+      "category": "billing",
+      "subject": "Monthly invoice email stopped arriving",
+      "description": "The customer no longer receives the monthly invoice email, although new invoices still appear in Billing Center.",
+      "resolution_notes": "Invoice emails go only to billing contacts, and a contact cleanup had removed the finance mailbox from that list while leaving it as a workspace user. Re-added the mailbox as a billing contact and resent the last two invoices. The customer confirmed both arrived.",
+      "tags": ["invoice-email", "billing-contact"], "created_at": "2026-02-03", "status": "resolved"
+    },
+    {
+      "key": "billing-051", "family_id": "billing-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Older invoice PDFs show 'Document unavailable'",
+      "description": "Clicking Download PDF on any invoice more than 12 months old returns 'Document unavailable'.",
+      "resolution_notes": "Invoice PDFs older than 12 months had been moved to archive storage, but the download links still pointed to the original location. Regenerated the requested PDFs for the customer, and the archive link mapping was corrected. Confirmed the customer could download every invoice from 2024.",
+      "tags": ["invoice-pdf", "archive-storage", "download"], "created_at": "2025-07-14", "status": "resolved"
+    },
+    {
+      "key": "billing-052", "family_id": "billing-f09", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "The change concerns the legal entity printed on invoices, not the workspace's display name, so it is billing rather than workspace_admin.",
+      "category": "billing",
+      "subject": "Invoices need the new legal entity name after acquisition",
+      "description": "Following an acquisition, the customer's legal entity name and registered address changed, and their invoices must now show both.",
+      "resolution_notes": "Updated the legal name and registered address in the billing profile. Issued invoices cannot be edited, so we credited and rebilled the open invoice to carry the new details. Confirmed the rebilled invoice showed the new entity name and address.",
+      "tags": ["legal-entity", "billing-profile", "credit-and-rebill"], "created_at": "2026-06-02", "status": "resolved"
+    },
+    {
+      "key": "billing-053", "family_id": "billing-f09", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Need invoice lines split by store region cost center",
+      "description": "The customer's finance team needs the seats on each invoice grouped by cost center, one per store region, so they can allocate the subscription internally.",
+      "resolution_notes": "Enabled cost-center tagging on users in Billing Center, helped the admin tag the 64 seats by region and turned on invoice grouping by cost center. Confirmed the next invoice preview listed the seats under four cost centers with subtotals.",
+      "tags": ["cost-center", "invoice-lines", "seat-allocation"], "created_at": "2025-10-07", "status": "resolved"
+    },
+    {
+      "key": "billing-054", "family_id": "billing-f09", "related_group": null, "challenge": "related_symptom_different_product", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Can't find invoices for a marketplace purchase",
+      "description": "The customer bought their subscription through their cloud provider's software marketplace and cannot find any invoices in Billing Center.",
+      "resolution_notes": "Marketplace purchases are invoiced by the marketplace operator, and Billing Center lists only subscriptions we bill directly. Explained where the invoices appear in the marketplace console and set the account flag that shows a 'Billed via marketplace' banner in Billing Center. Confirmed the banner displayed for the admin.",
+      "tags": ["marketplace-purchase", "invoice-access"], "created_at": "2026-09-22", "status": "resolved"
+    },
+    {
+      "key": "billing-055", "family_id": "billing-f10", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal invoiced in USD after asking for euros",
+      "description": "The customer asked to be invoiced in euros from renewal onward, but the renewal invoice arrived in US dollars.",
+      "resolution_notes": "Currency can change only at renewal and requires assigning a new price book to the subscription; the request had been logged, but the price book was not switched before the renewal job ran. Voided the USD invoice and reissued it in EUR at the agreed euro price. Confirmed the subscription currency now reads EUR.",
+      "tags": ["billing-currency", "price-book", "renewal"], "created_at": "2025-05-29", "status": "resolved"
+    },
+    {
+      "key": "billing-056", "family_id": "billing-f10", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "Currency here concerns the price charged, not currency values in analytics data, so it is billing rather than data_quality.",
+      "category": "billing",
+      "subject": "Card statement amount differs from GBP estimate at checkout",
+      "description": "Checkout showed an estimated price in pounds, but the subscription was charged in dollars and the pound amount on the card statement came out higher.",
+      "resolution_notes": "Checkout shows a converted estimate to browsers in the UK, while the subscription is priced in USD and the card issuer applied its own exchange rate. Explained the difference and offered GBP pricing from renewal, which the customer accepted. Confirmed the renewal preview shows GBP.",
+      "tags": ["billing-currency", "exchange-rate", "checkout-estimate"], "created_at": "2026-03-03", "status": "resolved"
+    },
+    {
+      "key": "billing-057", "family_id": "billing-f10", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Invoice total off by one cent from sum of lines",
+      "description": "The customer's accounting system flags a 0.01 difference between the sum of line items and the invoice total on invoices that have several prorated lines.",
+      "resolution_notes": "Tax was calculated on the unrounded subtotal while each line was rounded to two decimals, so totals could differ by a cent. Switched the account to line-level tax rounding, which was being rolled out to all accounts, and reissued the affected invoice. Confirmed the reissued invoice reconciled exactly.",
+      "tags": ["rounding", "invoice-total", "tax-calculation"], "created_at": "2025-11-19", "status": "resolved"
+    },
+    {
+      "key": "billing-058", "family_id": "billing-f10", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": "The formatting problem is on invoice documents, not the workspace's number-format preference, so it stays in billing rather than workspace_admin.",
+      "category": "billing",
+      "subject": "Yen invoices printed with decimals",
+      "description": "A customer in Japan reports invoice amounts printed as '¥54,000.00'; their accounting software rejects decimal yen values on import.",
+      "resolution_notes": "The invoice template applied two decimal places to every currency instead of each currency's own minor units. The template was corrected to print yen without decimals and the affected invoices were reissued. Confirmed the reissued PDF shows ¥54,000.",
+      "tags": ["invoice-template", "currency-format", "jpy"], "created_at": "2026-10-20", "status": "resolved"
+    },
+    {
+      "key": "billing-059", "family_id": "billing-f10", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Invoiced in CAD although contract fixes USD",
+      "description": "After the customer updated its billing address to Canada, the next invoice came in Canadian dollars at a converted price, contrary to the USD pricing in their contract.",
+      "resolution_notes": "Changing the billing country triggered automatic currency localisation, which should be suppressed for contracts with a fixed currency. Reissued the invoice in USD and locked the subscription currency. Confirmed the following draft invoice stayed in USD.",
+      "tags": ["billing-currency", "currency-lock", "contract-terms"], "created_at": "2025-08-06", "status": "resolved"
+    },
+    {
+      "key": "billing-060", "family_id": "billing-f10", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Credit note issued in a different currency from its invoice",
+      "description": "After the account moved to GBP billing, a credit note for an old USD invoice was issued in GBP, and the customer's ledger cannot match it.",
+      "resolution_notes": "Credit notes were generated in the subscription's current currency rather than the currency of the invoice being credited. Voided the GBP credit note and reissued it in USD against the original invoice. Confirmed accounts payable matched it to the invoice.",
+      "tags": ["credit-note", "billing-currency", "reconciliation"], "created_at": "2026-04-29", "status": "resolved"
+    },
+    {
+      "key": "billing-061", "family_id": "billing-f11", "related_group": "billing-g07", "challenge": null, "classification_rationale": "A connector is involved, but the issue is the metered charge rather than ingestion, so it is billing rather than sync.",
+      "category": "billing",
+      "subject": "Data rows overage for a store we disconnected",
+      "description": "The customer disconnected a legacy e-commerce store in May, but June's invoice includes a data rows overage as if that store's history were still loaded.",
+      "resolution_notes": "Rows from disconnected sources are retained for 30 days in case of reconnection, and the usage meter counted them during that window. Credited the overage and purged the legacy source's rows at the customer's request. Confirmed the meter fell below the plan allowance.",
+      "tags": ["usage-meter", "data-rows-overage", "disconnected-source"], "created_at": "2025-07-08", "status": "resolved"
+    },
+    {
+      "key": "billing-062", "family_id": "billing-f11", "related_group": "billing-g07", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Usage page still over limit after deleting test source",
+      "description": "The admin deleted a 3-million-row test data source to stay within the Growth plan's row allowance, yet the Usage page still shows them over the limit.",
+      "resolution_notes": "Deleted sources sit in a 30-day soft-delete window, and the usage meter included those rows. With the admin's confirmation, permanently purged the source, and the meter recalculated. Confirmed the Usage page showed 2.1 million rows against the 2.5 million allowance.",
+      "tags": ["usage-meter", "soft-delete", "row-allowance"], "created_at": "2026-01-13", "status": "resolved"
+    },
+    {
+      "key": "billing-063", "family_id": "billing-f11", "related_group": "billing-g07", "challenge": "workaround_vs_permanent_fix", "classification_rationale": "The notice is a billing usage warning rather than a metric alert rule, so it belongs to billing, not alerts.",
+      "category": "billing",
+      "subject": "Overage warning for rows from archived sources",
+      "description": "The customer received the 'You will be billed for excess data rows' notice a week after archiving two regional sources and believes they are well under the cap.",
+      "resolution_notes": "Archived sources' rows were still counted while they were in the retention period. As a workaround until the meter change that excludes retained rows was deployed, applied an overage waiver for the current cycle. Confirmed the billing preview showed no overage line.",
+      "tags": ["usage-meter", "overage-notice", "archived-source"], "created_at": "2026-06-24", "status": "resolved"
+    },
+    {
+      "key": "billing-064", "family_id": "billing-f11", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Connector Pack added after connecting a fifth source",
+      "description": "The Connector Pack add-on appeared on the invoice after the customer connected a fifth data source; they believed the Growth plan includes unlimited connectors.",
+      "resolution_notes": "Growth includes four connectors, and connecting a fifth adds the Connector Pack, as stated in the confirmation dialog. The customer disconnected a source they no longer used, and we removed the add-on with a prorated credit. Confirmed the next invoice preview had no Connector Pack line.",
+      "tags": ["connector-pack", "add-on", "plan-limits"], "created_at": "2025-03-05", "status": "resolved"
+    },
+    {
+      "key": "billing-065", "family_id": "billing-f11", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Forecasting add-on billed after removal",
+      "description": "The Forecasting add-on was removed in Plan & Billing in January, but the February invoice still charges for it.",
+      "resolution_notes": "The removal applied only to the workspace the admin had open; the add-on was also enabled on a second workspace under the same subscription. Removed it there too and credited February's charge as goodwill, because the screen implied account-wide removal. Confirmed the add-on no longer appears on the next invoice preview.",
+      "tags": ["add-on", "add-on-removal", "multi-workspace"], "created_at": "2025-02-11", "status": "resolved"
+    },
+    {
+      "key": "billing-066", "family_id": "billing-f11", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": "API traffic is involved, but the dispute is about metered charges, so it is billing rather than api.",
+      "category": "billing",
+      "subject": "API call overage doubled in a month with no changes",
+      "description": "The customer's invoice shows an API call overage at roughly twice their normal volume, for a month in which they changed nothing in their integration.",
+      "resolution_notes": "During a period of 503 responses on our side, their client retried requests, and the usage meter counted both the failed and the retried calls. Credited the calls metered during the incident, and the meter was changed to count only successful requests. Confirmed the corrected usage figure was within their allowance.",
+      "tags": ["api-usage-meter", "overage", "metering"], "created_at": "2026-10-27", "status": "resolved"
+    },
+    {
+      "key": "billing-067", "family_id": "billing-f12", "related_group": "billing-g08", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal invoice ignores three-year price lock",
+      "description": "The annual renewal invoice is 18% higher than last year's, although the customer's contract locks the price for three years.",
+      "resolution_notes": "The contracted price had been entered as an override covering only the first term, so the renewal reverted to list price. Re-rated the renewal at the locked price, reissued the invoice and extended the override to the full contract. Confirmed the override's end date now matches the contract.",
+      "tags": ["price-lock", "renewal", "contract-pricing"], "created_at": "2025-09-17", "status": "resolved"
+    },
+    {
+      "key": "billing-068", "family_id": "billing-f12", "related_group": "billing-g08", "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal quote doesn't reflect price protection",
+      "description": "Procurement received the 60-day renewal notice, and the quoted amount does not include the multi-year price protection in their agreement.",
+      "resolution_notes": "Price protection was stored as a single-term override, and renewal quotes fall back to list price when no override applies to the next term. Extended the override to the remaining contract term and regenerated the quote. Confirmed the new quote matched the contracted rate.",
+      "tags": ["price-protection", "renewal-quote", "contract-pricing"], "created_at": "2026-07-15", "status": "resolved"
+    },
+    {
+      "key": "billing-069", "family_id": "billing-f12", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Charged when trial ended, no reminder received",
+      "description": "A customer who entered a card at trial signup was charged on day 15 and says they never got a reminder that the trial was ending.",
+      "resolution_notes": "Trials with a card on file convert automatically, as the signup page states, but the trial-ending reminder was suppressed because the user had unsubscribed from product emails, which wrongly also blocked this transactional message. Refunded the charge and cancelled at the customer's request, and the reminder was reclassified as transactional. Confirmed the refund was issued.",
+      "tags": ["trial-conversion", "reminder-email", "refund"], "created_at": "2025-06-11", "status": "resolved"
+    },
+    {
+      "key": "billing-070", "family_id": "billing-f12", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Can't convert trial: 'Subscription cannot be created'",
+      "description": "Customer wants to keep using the product after the trial, but the workspace locked on day 15 and the upgrade button returns 'Subscription cannot be created'.",
+      "resolution_notes": "Trials started from a partner referral link were created with a billing account that had no currency set, so subscription creation failed. Set the billing currency and completed the upgrade. Confirmed the workspace unlocked with all trial dashboards intact.",
+      "tags": ["trial-conversion", "subscription-creation", "partner-referral"], "created_at": "2026-02-10", "status": "resolved"
+    },
+    {
+      "key": "billing-071", "family_id": "billing-f12", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Agreed trial extension not applied",
+      "description": "Sales agreed to extend the customer's trial by two weeks to finish a pilot, but the trial ended on the original date.",
+      "resolution_notes": "The extension was recorded in the sales notes but never applied to the trial end date in the billing system. Extended the trial by 14 days and restored access. Confirmed the trial banner shows the new end date.",
+      "tags": ["trial-extension", "trial-expiry"], "created_at": "2025-12-09", "status": "resolved"
+    },
+    {
+      "key": "billing-072", "family_id": "billing-f12", "related_group": null, "challenge": "similar_wording_different_problem", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Renewal notice for a workspace we cancelled",
+      "description": "Customer cancelled a regional workspace last quarter but has just received a 30-day renewal notice for it and fears another charge.",
+      "resolution_notes": "The cancellation had been recorded correctly; the notice job read a cached subscription list that had not been refreshed. No charge was scheduled, since the subscription status was Cancelled and its invoice preview empty. Suppressed further notices for the workspace, and the cache refresh was fixed.",
+      "tags": ["renewal-notice", "cancellation", "stale-cache"], "created_at": "2026-08-04", "status": "resolved"
+    },
+    {
+      "key": "billing-073", "family_id": "billing-f13", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Outage service credit not deducted from April invoice",
+      "description": "The customer was promised a service credit for a March outage, but April's invoice charges the full amount.",
+      "resolution_notes": "The credit note had been linked to the already-paid March invoice instead of the account balance, so it was never applied. Applied the credit note to the April invoice. Confirmed the balance due dropped by the credited amount.",
+      "tags": ["service-credit", "credit-note", "invoice-balance"], "created_at": "2025-04-22", "status": "resolved"
+    },
+    {
+      "key": "billing-074", "family_id": "billing-f13", "related_group": null, "challenge": "same_symptom_different_cause", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Refund confirmed but not on card statement yet",
+      "description": "Terse report: refund confirmation received four days ago, nothing on the card statement yet.",
+      "resolution_notes": "The refund had settled on our side; card refunds take 5 to 10 business days to post depending on the issuer. Shared the refund's acquirer reference number so the customer's bank could trace it. The customer confirmed it posted on day seven.",
+      "tags": ["refund", "card-refund-timing"], "created_at": "2026-05-26", "status": "resolved"
+    },
+    {
+      "key": "billing-075", "family_id": "billing-f13", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Goodwill credit consumed by the wrong workspace's invoice",
+      "description": "A goodwill credit granted for the customer's EU workspace was used up by the US workspace's invoice instead.",
+      "resolution_notes": "Credits sit at the billing-account level and apply to the earliest due invoice regardless of workspace. Reversed the application, applied the credit to the EU invoice and restricted it to the EU subscription. Confirmed both invoice balances matched what the customer expected.",
+      "tags": ["account-credit", "credit-allocation", "multi-workspace"], "created_at": "2025-10-21", "status": "resolved"
+    },
+    {
+      "key": "billing-076", "family_id": "billing-f13", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Refund to a closed card bounced back",
+      "description": "A refund for a cancelled add-on was returned to us because the original card had been closed.",
+      "resolution_notes": "The processor cannot redirect a card refund once the card is closed. After verifying the request with the billing owner, issued the refund by bank transfer instead. Confirmed the transfer completed and the refund shows as settled.",
+      "tags": ["refund", "closed-card", "bank-transfer"], "created_at": "2026-09-15", "status": "resolved"
+    },
+    {
+      "key": "billing-077", "family_id": "billing-f13", "related_group": null, "challenge": null, "classification_rationale": null,
+      "category": "billing",
+      "subject": "Prepaid row credits expired after six months",
+      "description": "Customer bought a block of prepaid data-row credits in January and found the balance zeroed in July, though they understood credits last 12 months.",
+      "resolution_notes": "The credit block had been created with a 6-month expiry, contrary to the 12 months on the order form. Reinstated the expired balance with the correct expiry date. Confirmed the Usage page shows the credits valid until the following January.",
+      "tags": ["prepaid-credits", "credit-expiry", "order-form"], "created_at": "2026-07-21", "status": "resolved"
+    },
+    {
+      "key": "billing-078", "family_id": "billing-f13", "related_group": null, "challenge": "negation_or_opposite", "classification_rationale": null,
+      "category": "billing",
+      "subject": "Unexpected refund received from us",
+      "description": "The customer's finance team noticed a refund from us that they never requested and asked whether their subscription had been cancelled.",
+      "resolution_notes": "The refund came from a bulk correction for accounts that had been overcharged when mid-cycle seat additions were prorated from the start of the billing period; the subscription itself was unaffected. Sent the breakdown of the corrected proration. Confirmed the subscription status remained Active.",
+      "tags": ["refund", "proration-correction"], "created_at": "2025-08-14", "status": "resolved"
+    }
+  ]
+}
